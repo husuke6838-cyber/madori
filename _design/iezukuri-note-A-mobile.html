@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>いえづくりノート — A方向 スマホ実画面</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4efe7;--surface:#fffdf9;--surface-2:#faf6ee;
+    --ink:#2c2722;--ink-soft:#6b635a;--ink-faint:#a39a8d;--line:#e6ddcf;
+    --clay:#bd5d3a;--clay-soft:#f3e2d9;--sage:#6f7d5c;--sage-soft:#e8ecdf;
+    --wife:#c6587f;--wife-soft:#f6e3ea;--hub:#4f7a99;--hub-soft:#e0ebf1;--wall:#9c907c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:'Zen Kaku Gothic New',sans-serif;background:radial-gradient(circle at 50% 0%,#efe9e0,#e3dccf);min-height:100vh;display:grid;place-items:center;padding:30px 16px;}
+  .mincho{font-family:'Shippori Mincho',serif;}
+  .phone{width:378px;max-width:100%;border-radius:44px;background:#1c1a17;padding:11px;box-shadow:0 40px 80px -26px rgba(40,30,20,.5),0 0 0 1px rgba(0,0,0,.05);}
+  .screen{border-radius:33px;overflow:hidden;height:760px;background:var(--paper);color:var(--ink);display:flex;flex-direction:column;position:relative;}
+  .notch{height:30px;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:12.5px;font-weight:700;flex-shrink:0;}
+  .notch .dots{font-size:10px;letter-spacing:1px;}
+  .appbar{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:6px 18px 12px;background:rgba(244,239,231,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);}
+  .logo{display:flex;align-items:center;gap:9px;font-family:'Shippori Mincho',serif;font-weight:700;font-size:16.5px;}
+  .logo .mk{width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,var(--clay),#a84e30);display:grid;place-items:center;color:#fff;font-size:14px;box-shadow:0 3px 8px rgba(189,93,58,.35);}
+  .share-ic{margin-left:auto;background:var(--clay);color:#fff;border:0;font-family:inherit;font-weight:700;font-size:12.5px;padding:8px 14px;border-radius:11px;display:flex;align-items:center;gap:6px;box-shadow:0 3px 9px rgba(189,93,58,.3);}
+  .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .scroll::-webkit-scrollbar{width:0}
+  .memrow{display:flex;gap:7px;align-items:center;padding:13px 18px 4px;flex-wrap:wrap;}
+  .mc{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:5px 9px 5px 10px;border-radius:16px;}
+  .mc .d{width:7px;height:7px;border-radius:50%;}
+  .mc.w{background:var(--wife-soft);color:#a13c63;} .mc.w .d{background:var(--wife);}
+  .mc.h{background:var(--hub-soft);color:#39617c;} .mc.h .d{background:var(--hub);}
+  .mc .nm{outline:none;} .mc .nm:focus{border-bottom:1px dashed currentColor;}
+  .mc .x{border:0;background:transparent;color:inherit;opacity:.4;font-size:13px;line-height:1;padding:0 1px;}
+  .mc-add{border:1px dashed var(--ink-faint);background:transparent;color:var(--ink-soft);font-family:inherit;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:16px;}
+  .tabrow{display:flex;gap:8px;overflow-x:auto;padding:12px 18px;scrollbar-width:none;}
+  .tabrow::-webkit-scrollbar{height:0}
+  .tab{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:7px 15px;border-radius:20px;font-size:13px;font-weight:500;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-soft);white-space:nowrap;}
+  .tab.on{background:var(--surface);color:var(--ink);font-weight:700;box-shadow:0 4px 11px rgba(60,45,30,.07);}
+  .tab .cb{width:6px;height:6px;border-radius:50%;background:var(--line);}
+  .tab.has .cb{background:var(--sage);}
+  .content{padding:6px 18px 26px;}
+  .rhead{display:flex;align-items:flex-end;gap:8px;margin:6px 2px 4px;}
+  .rt{font-size:25px;}
+  .sizechip{font-size:11px;font-weight:700;color:#9c6a3a;background:#f6ead9;border:1px solid #ecd6bd;padding:3px 9px;border-radius:14px;margin-bottom:5px;}
+  .sortbtn{margin-left:auto;font-size:11px;font-weight:700;color:var(--ink-soft);background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:5px 11px;margin-bottom:4px;}
+  .sortbtn.on{color:var(--clay);border-color:var(--clay);background:var(--clay-soft);}
+  .rsub{font-size:12.5px;color:var(--ink-soft);margin:0 2px 14px;}
+  .regret{display:flex;gap:9px;background:var(--sage-soft);border:1px solid #d6ddc7;border-radius:13px;padding:11px 13px;margin-bottom:14px;font-size:12.5px;color:#46532f;line-height:1.5;}
+  .regret .ri{font-size:16px;flex-shrink:0;}
+  .regret b{display:block;font-size:10.5px;letter-spacing:.06em;color:#5d6b40;margin-bottom:2px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line);border-radius:15px;padding:14px 16px;margin-bottom:12px;box-shadow:0 5px 14px rgba(60,45,30,.05);}
+  .card.lvl-hi{border-left-color:var(--clay);}
+  .card.lvl-mid{border-left-color:#d3a26a;}
+  .prevline{font-size:12.5px;color:var(--ink-faint);text-decoration:line-through;margin-bottom:3px;}
+  .ctext{font-size:15px;font-weight:500;line-height:1.45;}
+  .revtag{font-size:9.5px;font-weight:700;color:var(--clay);background:var(--clay-soft);border-radius:10px;padding:1px 6px;margin-left:6px;vertical-align:middle;}
+  .crate{display:flex;flex-direction:column;gap:6px;margin-top:11px;}
+  .rr{display:flex;align-items:center;gap:8px;}
+  .rr .who{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;min-width:54px;text-align:center;}
+  .rr.w .who{background:var(--wife-soft);color:#a13c63;} .rr.h .who{background:var(--hub-soft);color:#39617c;}
+  .stars{display:flex;gap:3px;}
+  .star{font-size:17px;line-height:1;color:#dcd2c2;}
+  .rr.w .star.on{color:var(--wife);} .rr.h .star.on{color:var(--hub);}
+  .attach{margin-top:12px;display:flex;flex-direction:column;gap:8px;}
+  .thumbs{display:flex;gap:8px;flex-wrap:wrap;}
+  .thumb{width:74px;height:74px;border-radius:10px;background:linear-gradient(135deg,#eadfce,#dccdb4);display:grid;place-items:center;color:#b29b78;font-size:10.5px;border:1px solid var(--line);}
+  .reflink{display:flex;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:var(--surface-2);}
+  .reflink .img{width:56px;flex-shrink:0;background:linear-gradient(135deg,#e7d9c4,#d8c4a6);display:grid;place-items:center;font-size:17px;}
+  .reflink .meta{padding:8px 11px;min-width:0;flex:1;}
+  .reflink .t{font-size:12px;font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .reflink .s{font-size:10.5px;color:var(--ink-faint);margin-top:2px;}
+  .addref{align-self:flex-start;border:1px dashed #d4c9b6;background:transparent;color:var(--ink-soft);font-family:inherit;font-size:12px;font-weight:700;padding:7px 13px;border-radius:18px;}
+  .memo{font-size:12.5px;color:var(--ink-soft);margin-top:10px;}
+  .memo:before{content:"メモ ";color:var(--ink-faint);font-size:10px;font-weight:700;letter-spacing:.08em;}
+  .nacheck{display:flex;align-items:center;gap:9px;padding:11px 14px;border:1px dashed var(--line);border-radius:13px;background:var(--surface-2);font-size:13px;color:var(--ink-soft);margin-bottom:6px;}
+  .nacheck .box{width:19px;height:19px;border-radius:5px;border:1.5px solid var(--ink-faint);display:grid;place-items:center;font-size:13px;color:#fff;flex-shrink:0;}
+  .nacheck.on .box{background:var(--sage);border-color:var(--sage);}
+  .nacheck.on{color:var(--ink-faint);text-decoration:line-through;}
+  .empty{text-align:center;padding:24px 16px;color:var(--ink-faint);font-size:13px;border:1px dashed var(--line);border-radius:14px;background:var(--surface-2);margin-bottom:10px;}
+  .hintlbl{font-size:10.5px;letter-spacing:.1em;color:var(--ink-faint);font-weight:700;margin:16px 2px 9px;}
+  .hrow{display:flex;gap:8px;flex-wrap:wrap;}
+  .hc{border:1px dashed #d4c9b6;background:transparent;color:var(--ink-soft);font-family:inherit;font-size:12.5px;padding:7px 12px;border-radius:18px;}
+  .fab{position:absolute;right:20px;bottom:84px;width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,var(--clay),#a84e30);color:#fff;border:0;font-size:26px;box-shadow:0 12px 24px -7px rgba(189,93,58,.55);}
+  .bottomnav{flex-shrink:0;display:flex;border-top:1px solid var(--line);background:rgba(255,253,249,.92);backdrop-filter:blur(8px);padding:8px 0 16px;}
+  .nav{flex:1;border:0;background:transparent;font-family:inherit;font-size:10.5px;font-weight:700;color:var(--ink-faint);display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .nav .ni{font-size:17px;}
+  .nav.on{color:var(--clay);}
+  /* 計画書 */
+  .doc{padding:20px 18px 30px;}
+  .doc-h{font-family:'Shippori Mincho',serif;font-size:21px;text-align:center;}
+  .doc-sub{text-align:center;font-size:11.5px;color:var(--ink-soft);margin-top:4px;padding-bottom:14px;border-bottom:2px solid var(--ink);}
+  .doc-leg{display:flex;justify-content:center;gap:14px;font-size:11px;margin-top:12px;}
+  .doc-room{margin-top:18px;}
+  .doc-room h2{font-family:'Shippori Mincho',serif;font-size:15.5px;border-left:4px solid var(--clay);padding-left:10px;margin-bottom:8px;}
+  .di{display:flex;gap:10px;padding:9px 0;border-bottom:1px dotted var(--line);}
+  .di-st{flex-shrink:0;font-size:11px;display:flex;flex-direction:column;gap:2px;min-width:90px;}
+  .di-st b{min-width:46px;display:inline-block;}
+  .di-t{font-size:13px;}
+  .docbtns{display:flex;gap:9px;margin-top:18px;}
+  .docbtns button{flex:1;border:0;font-family:inherit;font-weight:700;font-size:13px;padding:11px;border-radius:11px;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .b-print{background:var(--ink);color:#fff;}
+  .b-mail{background:var(--clay);color:#fff;}
+  .nudge{margin:14px 0 0;background:var(--sage-soft);border:1px solid #d6ddc7;border-radius:13px;padding:13px 15px;font-size:12px;color:#4d5a3a;}
+  .nudge b{display:block;color:var(--ink);margin-bottom:6px;font-size:13px;}
+  .nudge a{display:inline-block;margin-top:8px;background:var(--sage);color:#fff;text-decoration:none;font-weight:700;font-size:12px;padding:8px 14px;border-radius:9px;}
+  /* 間取り */
+  .mad-head{padding:14px 18px 0;}
+  .ptabrow{display:flex;gap:7px;align-items:center;overflow-x:auto;padding:12px 18px 4px;scrollbar-width:none;}
+  .ptabrow::-webkit-scrollbar{height:0}
+  .ptab{flex-shrink:0;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-soft);font-family:inherit;font-size:12.5px;font-weight:700;padding:6px 14px;border-radius:18px;}
+  .ptab.on{background:var(--clay);color:#fff;border-color:var(--clay);box-shadow:0 3px 9px rgba(189,93,58,.28);}
+  .ptab.add{color:var(--clay);border-style:dashed;padding:6px 12px;}
+  .ptab.max{color:var(--ink-faint);border-style:dashed;}
+  .pdup{flex-shrink:0;margin-left:auto;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);font-family:inherit;font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:18px;}
+  .summary{margin:12px 18px 0;background:linear-gradient(135deg,#fff7ef,#fdefe0);border:1px solid #f0dcc7;border-radius:14px;padding:14px 16px;}
+  .summary .srow{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;padding:3px 0;}
+  .summary .srow b{font-family:'Shippori Mincho',serif;font-size:17px;}
+  .summary .sk{color:var(--ink-soft);font-size:12px;}
+  .summary .cap{font-size:10px;color:#a8754a;margin-top:8px;line-height:1.5;}
+  .plan{position:relative;width:322px;max-width:calc(100% - 36px);height:430px;margin:14px auto 0;border:2.5px solid var(--wall);border-radius:4px;background:repeating-linear-gradient(0deg,transparent 0 26px,#e9e0d0 26px 27px),repeating-linear-gradient(90deg,transparent 0 26px,#e9e0d0 26px 27px),#f8f3ec;}
+  .rm{position:absolute;background:var(--surface);border:1.5px solid var(--wall);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center;}
+  .rm .rl{font-size:13px;font-weight:700;} .rm .rj{font-size:10px;color:var(--ink-soft);}
+  .rm.sel{border-color:var(--clay);box-shadow:inset 0 0 0 2px var(--clay-soft);z-index:3;}
+  .win{position:absolute;background:var(--surface);border:1px solid var(--wall);z-index:4;}
+  .palette{padding:14px 16px 6px;}
+  .pcap{font-size:11px;color:var(--ink-faint);text-align:center;margin-bottom:10px;}
+  .tools{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;}
+  .tools::-webkit-scrollbar{height:0}
+  .tool{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:9px 12px;font-size:10px;font-weight:700;color:var(--ink-soft);min-width:56px;}
+  .tool .ti{font-size:18px;}
+  /* 記録タイムライン */
+  .tl{padding:18px 18px 30px;}
+  .tl-add{width:100%;border:1px dashed var(--line);background:var(--surface);color:var(--ink-soft);font-family:inherit;font-weight:700;font-size:13px;padding:11px;border-radius:12px;margin-bottom:18px;}
+  .tlitem{position:relative;padding:0 0 20px 26px;border-left:2px solid var(--line);margin-left:5px;}
+  .tlitem:last-child{border-left-color:transparent;}
+  .tlitem .dot{position:absolute;left:-7px;top:2px;width:12px;height:12px;border-radius:50%;background:var(--clay);border:2px solid var(--paper);}
+  .tlitem.future .dot{background:var(--surface);border:2px solid var(--ink-faint);}
+  .tldate{font-size:11px;font-weight:700;color:var(--clay);}
+  .tlitem.future .tldate{color:var(--ink-faint);}
+  .tltitle{font-size:14px;font-weight:700;margin:2px 0 7px;}
+  .tlbox{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5;}
+  .tlbox .lab{font-size:10px;font-weight:700;color:var(--ink-faint);letter-spacing:.05em;}
+  .tlbox .mine{margin-bottom:6px;} .tlbox .theirs{color:var(--ink-soft);}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="screen">
+    <div class="notch"><span>9:41</span><span class="dots">●●● ▮</span></div>
+    <div class="appbar"><div class="logo"><span class="mk">家</span>いえづくりノート</div><button class="share-ic" onclick="setView('doc')">🔗 共有</button></div>
+    <div class="scroll" id="scroll"></div>
+    <button class="fab" id="fab" onclick="addHint('')">＋</button>
+    <div class="bottomnav">
+      <button class="nav on" id="navEdit" onclick="setView('edit')"><span class="ni">✎</span>ノート</button>
+      <button class="nav" id="navDoc" onclick="setView('doc')"><span class="ni">📄</span>計画書</button>
+      <button class="nav" id="navMad" onclick="setView('madori')"><span class="ni">▦</span>間取り</button>
+      <button class="nav" id="navKir" onclick="setView('kiroku')"><span class="ni">🗒</span>記録</button>
+    </div>
+  </div>
+</div>
+<script>
+const suggestNames=['お子さん','おじいちゃん','おばあちゃん','家族'];
+let members=[{id:'wife',name:'奥さん',cls:'w'},{id:'hub',name:'旦那さん',cls:'h'}];
+const refPool=[{title:'#マイホーム計画 の投稿',site:'instagram.com',ic:'📷'},{title:'Panasonic ラクシーナ',site:'panasonic.com',ic:'🏷'},{title:'施工事例ギャラリー｜○○工務店',site:'example.com',ic:'🔗'}];
+const project={name:"我が家の家づくり",rooms:[
+  {id:'zentai',name:'全体',sub:'家全体にかかわる要望',hints:['予算配分','断熱性能','動線','収納量','電気配線','耐震等級'],items:[
+    {text:'断熱性能はZEH基準以上にしたい',r:{wife:3,hub:3},links:[],imgs:0},
+    {text:'家事動線を短く。洗濯→干す→しまうを一直線に',r:{wife:3,hub:1},memo:'ランドリールームがあると理想',links:[],imgs:0},
+  ]},
+  {id:'genkan',name:'玄関',jou:2,regret:'玄関のコンセントは掃除機や電動自転車の充電に便利。意外と忘れがち',hints:['向き','間口(cm)','土間収納','シューズクローク','採光','コンセント'],items:[
+    {text:'玄関は南向きにしたい',r:{wife:3,hub:2},links:[],imgs:0},
+    {text:'土間収納（シューズクローク）がほしい',r:{wife:3,hub:0},imgs:0,links:[{title:'施工事例：ウォークスルー土間収納',site:'example.com',ic:'🔗'}]},
+  ]},
+  {id:'ldk',name:'LDK',jou:20,regret:'キッチンのコンセントは2ヶ所以上あると、後で家電が増えても困りにくい',hints:['広さ（畳）','キッチン形状','床材','吹き抜け','床暖房','収納'],items:[
+    {text:'20畳以上ほしい',r:{wife:3,hub:3},links:[],imgs:0,prev:['リビングは18畳で考えていた']},
+    {text:'対面キッチン。アイランドが理想',r:{wife:3,hub:1},imgs:0,links:[{title:'#アイランドキッチン の投稿',site:'instagram.com',ic:'📷'},{title:'LIXIL リシェルSI',site:'lixil.co.jp',ic:'🏷'}]},
+    {text:'床は無垢材っぽい質感がいい',r:{wife:2,hub:1},imgs:1,links:[{title:'無垢フローリング オーク材',site:'rakuten.co.jp',ic:'🏷'}]},
+  ]},
+  {id:'shinshitsu',name:'主寝室',jou:6,hints:['広さ','WIC','コンセント','窓の向き'],items:[]},
+  {id:'kodomo',name:'子供部屋',jou:5,hints:['部屋数','広さ','収納','将来仕切れるか'],items:[]},
+  {id:'bath',name:'浴室',jou:2,hints:['サイズ','窓','浴室乾燥','追い焚き'],items:[],naDone:true},
+  {id:'toilet',name:'トイレ',jou:1,regret:'トイレに窓をつけない方が、夏に熱がこもりにくく掃除も楽という声も',hints:['数','手洗い','収納','タンクレス'],items:[]},
+  {id:'gaikou',name:'外構・庭',hints:['駐車台数','ウッドデッキ','物置'],items:[]},
+]};
+const floorplans=[
+  {name:'1階', plan:[
+    {l:'LDK',j:'16帖',x:6,y:6,w:178,h:262},{l:'玄関',j:'ホール',x:6,y:274,w:178,h:150},
+    {l:'主寝室',j:'6帖',x:190,y:6,w:126,h:148},{l:'洋室',j:'5帖',x:190,y:160,w:126,h:108},
+    {l:'浴室',j:'',x:190,y:274,w:126,h:62},{l:'洗面',j:'',x:190,y:342,w:70,h:82},{l:'WC',j:'',x:266,y:342,w:50,h:82},
+  ]},
+  {name:'2階', plan:[
+    {l:'子供部屋',j:'6帖',x:6,y:6,w:150,h:170},{l:'子供部屋',j:'6帖',x:6,y:182,w:150,h:170},
+    {l:'書斎',j:'4帖',x:162,y:6,w:154,h:120},{l:'ホール',j:'',x:162,y:132,w:90,h:110},
+    {l:'WC',j:'',x:258,y:132,w:58,h:110},{l:'納戸',j:'3帖',x:162,y:248,w:154,h:104},
+  ]},
+  {name:'案A', plan:[
+    {l:'LDK',j:'20帖',x:6,y:6,w:200,h:280},{l:'和室',j:'4.5帖',x:6,y:292,w:130,h:132},
+    {l:'玄関',j:'',x:142,y:292,w:64,h:132},{l:'主寝室',j:'7帖',x:212,y:6,w:104,h:160},
+    {l:'WIC',j:'',x:212,y:172,w:104,h:80},{l:'水回り',j:'',x:212,y:258,w:104,h:166},
+  ]},
+];
+let madPlan=0;
+const timeline=[
+  {date:'2026/05/20',title:'初回相談（○○工務店・田中さん）',mine:'予算と希望の広さ、ZEH希望を伝えた',theirs:'30坪なら概算2,000万円前後と説明。次回プラン提案',future:false},
+  {date:'2026/05/28',title:'プラン提案の打ち合わせ',mine:'対面キッチンと土間収納を再確認',theirs:'間取り案を3パターン用意すると回答',future:false},
+  {date:'2026/06/10',title:'間取り案の確認（予定）',mine:'',theirs:'',future:true},
+];
+let current='ldk', view='edit', madSel=-1, sortStar=false;
+
+function total(it){return members.reduce((s,m)=>s+(it.r?.[m.id]||0),0);}
+function lvl(it){const a=total(it)/Math.max(members.length,1);return a>=2.5?'lvl-hi':a>=1.5?'lvl-mid':'';}
+function memCls(m){return m.cls||'';}
+function memRow(){let h=members.map(m=>`<span class="mc ${memCls(m)}"><span class="d"></span><span class="nm" contenteditable onblur="rename('${m.id}',this.textContent)">${m.name}</span>${members.length>1?`<button class="x" onclick="delMem('${m.id}')">×</button>`:''}</span>`).join('');h+=`<button class="mc-add" onclick="addMem()">＋ 家族</button>`;return `<div class="memrow">${h}</div>`;}
+function tabRow(){return `<div class="tabrow">${project.rooms.map(r=>`<button class="tab ${r.id===current?'on':''} ${(r.items.length||r.naDone)?'has':''}" onclick="sel('${r.id}')"><span class="cb"></span>${r.name}</button>`).join('')}</div>`;}
+function starsHTML(rid,idx,m,val){let s='';for(let n=1;n<=3;n++)s+=`<span class="star ${n<=val?'on':''}" onclick="setStar('${rid}',${idx},'${m.id}',${n})">★</span>`;return s;}
+function rate(rid,idx,it){return `<div class="crate">${members.map(m=>`<div class="rr ${memCls(m)}"><span class="who">${m.name}</span><span class="stars">${starsHTML(rid,idx,m,it.r?.[m.id]||0)}</span></div>`).join('')}</div>`;}
+function attach(rid,idx,it){let h='<div class="attach">';if(it.imgs>0){h+='<div class="thumbs">';for(let i=0;i<it.imgs;i++)h+='<div class="thumb">🖼 写真</div>';h+='</div>';}(it.links||[]).forEach(l=>{h+=`<div class="reflink"><div class="img">${l.ic}</div><div class="meta"><div class="t">${l.title}</div><div class="s">${l.site}</div></div></div>`;});h+=`<button class="addref" onclick="addRef('${rid}',${idx})">＋ 参考リンク・写真</button></div>`;return h;}
+function itemCard(rid,idx,it){
+  const prev=(it.prev||[]).map(p=>`<div class="prevline">${p}</div>`).join('');
+  const tag=(it.prev&&it.prev.length)?'<span class="revtag">変更あり</span>':'';
+  return `<div class="card ${lvl(it)}">${prev}<div class="ctext">${it.text}${tag}</div>${rate(rid,idx,it)}${attach(rid,idx,it)}${it.memo?`<div class="memo">${it.memo}</div>`:''}</div>`;
+}
+function editView(){
+  const r=project.rooms.find(x=>x.id===current);
+  let head=`<div class="rhead"><span class="rt mincho">${r.name}</span>${r.jou?`<span class="sizechip">希望 ${r.jou}帖</span>`:''}<button class="sortbtn ${sortStar?'on':''}" onclick="toggleSort()">★順</button></div>`;
+  head+=`<div class="rsub">${r.sub||'理想を書きためよう'}</div>`;
+  let c='';
+  if(r.regret)c+=`<div class="regret"><span class="ri">💡</span><span><b>よくある後悔ポイント</b>${r.regret}</span></div>`;
+  let items=r.items.map((it,i)=>({it,i}));
+  if(sortStar)items.sort((a,b)=>total(b.it)-total(a.it));
+  if(r.items.length)c+=items.map(o=>itemCard(r.id,o.i,o.it)).join('');
+  else if(!r.naDone)c+='<div class="empty">まだ要望がありません。下のヒントから気になるものをタップ ✏️</div>';
+  c+=`<div class="nacheck ${r.naDone?'on':''}" onclick="toggleNa('${r.id}')"><span class="box">${r.naDone?'✓':''}</span>この場所は特に要望なし（確認済み）</div>`;
+  c+=`<div class="hintlbl">こんな項目はどう？（タップで追加）</div><div class="hrow">${r.hints.map(h=>`<button class="hc" onclick="addHint('${h}')">＋ ${h}</button>`).join('')}</div>`;
+  return memRow()+tabRow()+`<div class="content">${head}${c}</div>`;
+}
+function starText(v){return '★'.repeat(v)+'☆'.repeat(3-v);}
+function docView(){
+  let h=`<div class="doc"><div class="doc-h mincho">家づくり計画書</div><div class="doc-sub">${project.name}　／　${new Date().toLocaleDateString('ja-JP')}時点</div><div class="doc-leg">${members.map(m=>`<span style="color:${m.cls==='w'?'#a13c63':'#39617c'}">■ ${m.name}</span>`).join('')}</div>`;
+  project.rooms.forEach(r=>{
+    if(!r.items.length)return;
+    h+=`<div class="doc-room"><h2>${r.name}${r.jou?` <span style="font-size:11px;color:var(--ink-soft)">希望${r.jou}帖</span>`:''}</h2>`;
+    [...r.items].sort((a,b)=>total(b)-total(a)).forEach(it=>{
+      const st=members.map(m=>`<span style="color:${m.cls==='w'?'#a13c63':'#39617c'}"><b>${m.name}</b>${starText(it.r?.[m.id]||0)}</span>`).join('');
+      const lk=(it.links||[]).map(l=>`<br><span style="color:var(--clay);font-size:11px">🔗 ${l.title}</span>`).join('');
+      h+=`<div class="di"><div class="di-st">${st}</div><div class="di-t">${it.text}${it.memo?`<br><span style="color:var(--ink-soft);font-size:11px">${it.memo}</span>`:''}${lk}</div></div>`;
+    });
+    h+='</div>';
+  });
+  h+=`<div class="docbtns"><button class="b-print" onclick="return false">🖨 プリント</button><button class="b-mail" onclick="return false">✉️ メールで送る</button></div>`;
+  h+=`<div class="nudge"><b>家づくり、始めたばかりですか？</b>複数の住宅会社のプランを無料で取り寄せて比べられます<br><a href="#" onclick="return false">資料請求してみる</a></div></div>`;
+  return h;
+}
+function madoriView(){
+  const jt=project.rooms.reduce((s,r)=>s+(r.jou||0),0);
+  const liveT=(jt/2);const floorT=Math.round(liveT*1.35);
+  const cl=Math.round(floorT*70/10)*10, ch=Math.round(floorT*90/10)*10;
+  const plan=floorplans[madPlan].plan;
+  // 間取り切替バー（最大5個）
+  let ptabs=floorplans.map((f,i)=>`<button class="ptab ${i===madPlan?'on':''}" onclick="selPlan(${i})">${f.name}</button>`).join('');
+  if(floorplans.length<5)ptabs+=`<button class="ptab add" onclick="addPlan()">＋</button>`;
+  else ptabs+=`<span class="ptab max">最大5個</span>`;
+  const rms=plan.map((p,i)=>`<div class="rm ${i===madSel?'sel':''}" style="left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px" onclick="madTap(${i})"><span class="rl">${p.l}</span>${p.j?`<span class="rj">${p.j}</span>`:''}</div>`).join('');
+  const wins=`<div class="win" style="left:80px;top:-3px;width:46px;height:5px"></div><div class="win" style="left:236px;top:-3px;width:40px;height:5px"></div><div class="win" style="left:-3px;top:90px;width:5px;height:50px"></div>`;
+  const tools=[['＋','部屋'],['🚪','開き戸'],['🚪↔','引き戸'],['▭','窓'],['🪜','階段'],['🍳','キッチン'],['🛁','設備']].map(t=>`<button class="tool"><span class="ti">${t[0]}</span>${t[1]}</button>`).join('');
+  return `<div class="mad-head"><div class="rt mincho">間取りデザイン</div><div class="rsub">マス目に部屋を置いて、理想の間取りを2Dで描く</div></div>
+   <div class="ptabrow">${ptabs}<button class="pdup" onclick="dupPlan()">⧉ 複製</button></div>
+   <div class="summary">
+     <div class="srow"><span class="sk">要望サイズの合計（居室）</span><b>${jt}帖 / 約${liveT}坪</b></div>
+     <div class="srow"><span class="sk">延床の目安（廊下・水回り込み）</span><b>約${floorT}坪</b></div>
+     <div class="srow"><span class="sk">概算建築費</span><b>約${cl.toLocaleString()}〜${ch.toLocaleString()}万円</b></div>
+     <div class="srow"><span class="sk">固定資産税 初年度の目安</span><b>年 約8〜13万円</b></div>
+     <div class="cap">※マス目からの超概算です。坪単価70〜90万円で試算。実際の費用・税額は仕様・地域・軽減措置で大きく変わります</div>
+   </div>
+   <div class="plan">${rms}${wins}</div>
+   <div class="palette"><div class="pcap">「${floorplans[madPlan].name}」を編集中／部屋・扉・設備をタップして配置できます</div><div class="tools">${tools}</div></div>`;
+}
+function kirokuView(){
+  let h=`<div class="tl"><div class="rt mincho" style="margin-bottom:4px">打ち合わせの記録</div><div class="rsub">いつ・何を話したか・担当の方の回答をタイムラインで残す</div><button class="tl-add" onclick="return false">＋ 記録を追加</button>`;
+  timeline.forEach(t=>{
+    h+=`<div class="tlitem ${t.future?'future':''}"><span class="dot"></span><div class="tldate">${t.date}</div><div class="tltitle">${t.title}</div>`;
+    if(!t.future)h+=`<div class="tlbox"><div class="mine"><span class="lab">伝えたこと</span><br>${t.mine}</div><div class="theirs"><span class="lab">担当の方の回答</span><br>${t.theirs}</div></div>`;
+    h+=`</div>`;
+  });
+  return h+'</div>';
+}
+function render(){const v=view;document.getElementById('scroll').innerHTML = v==='edit'?editView():v==='doc'?docView():v==='madori'?madoriView():kirokuView();}
+function setView(v){view=v;['Edit','Doc','Mad','Kir'].forEach(s=>document.getElementById('nav'+s).classList.remove('on'));
+  document.getElementById({edit:'navEdit',doc:'navDoc',madori:'navMad',kiroku:'navKir'}[v]).classList.add('on');
+  document.getElementById('fab').style.display=v==='edit'?'grid':'none';render();}
+function sel(id){current=id;render();}
+function madTap(i){madSel=(madSel===i?-1:i);render();}
+function selPlan(i){madPlan=i;madSel=-1;render();}
+function addPlan(){if(floorplans.length>=5)return;floorplans.push({name:'案'+String.fromCharCode(65+floorplans.length),plan:[]});madPlan=floorplans.length-1;madSel=-1;render();}
+function dupPlan(){if(floorplans.length>=5)return;const src=floorplans[madPlan];floorplans.push({name:src.name+' のコピー',plan:JSON.parse(JSON.stringify(src.plan))});madPlan=floorplans.length-1;render();}
+function toggleSort(){sortStar=!sortStar;render();}
+function toggleNa(id){const r=project.rooms.find(x=>x.id===id);r.naDone=!r.naDone;render();}
+function setStar(rid,idx,mid,val){const it=project.rooms.find(x=>x.id===rid).items[idx];if(!it.r)it.r={};it.r[mid]=(it.r[mid]===val)?val-1:val;render();}
+function addHint(t){const r=project.rooms.find(x=>x.id===current);const r0={};members.forEach(m=>r0[m.id]=0);r.items.push({text:t||'（タップして入力）',r:r0,links:[],imgs:0});if(r.naDone)r.naDone=false;render();}
+function addRef(rid,idx){const it=project.rooms.find(x=>x.id===rid).items[idx];if(!it.links)it.links=[];it.links.push(refPool[it.links.length%refPool.length]);render();}
+function addMem(){const i=members.length;members.push({id:'m'+i,name:suggestNames[i-2]||('メンバー'+(i+1)),cls:''});render();}
+function delMem(id){members=members.filter(m=>m.id!==id);render();}
+function rename(id,n){const m=members.find(x=>x.id===id);if(m)m.name=n.trim()||m.name;}
+render();
+</script>
+</body>
+</html>

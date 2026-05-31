@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+/* =========================================================
+   いえづくりノート デザイントークン
+   仕様§3に準拠。色は CSS 変数で持ち、Tailwind v4 の @theme
+   経由で `bg-paper` / `text-clay` のように使える。
+   ========================================================= */
+
+:root {
+  --paper: #f4efe7;
+  --surface: #fffdf9;
+  --surface-2: #faf6ee;
+
+  --ink: #2c2722;
+  --ink-soft: #6b635a;
+  --ink-faint: #a39a8d;
+  --line: #e6ddcf;
+
+  --clay: #bd5d3a;
+  --clay-soft: #f3e2d9;
+  --sage: #6f7d5c;
+  --sage-soft: #e8ecdf;
+
+  /* 家族カラー（既定2色。追加メンバーはパレット内から自動割当） */
+  --wife: #c6587f;
+  --wife-soft: #f6e3ea;
+  --hub: #4f7a99;
+  --hub-soft: #e0ebf1;
+
+  /* 間取り */
+  --wall: #9c907c;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+
+  --color-clay: var(--clay);
+  --color-clay-soft: var(--clay-soft);
+  --color-sage: var(--sage);
+  --color-sage-soft: var(--sage-soft);
+
+  --color-wife: var(--wife);
+  --color-wife-soft: var(--wife-soft);
+  --color-hub: var(--hub);
+  --color-hub-soft: var(--hub-soft);
+
+  --color-wall: var(--wall);
+
+  --font-sans: var(--font-zen), "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  --font-mincho: var(--font-mincho), "Hiragino Mincho ProN", "Yu Mincho", serif;
+
+  /* 角丸 */
+  --radius-card: 15px;
+  --radius-chip: 18px;
+  --radius-btn: 11px;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* タッチ操作優先：最低タップ領域 44px を担保するユーティリティ */
+.tap-44 { min-height: 44px; min-width: 44px; }
+
+/* 印刷用（計画書タブの A4 印刷） */
+@media print {
+  body { background: #fff; color: #000; }
+  .no-print { display: none !important; }
+  @page { size: A4; margin: 14mm; }
+}
