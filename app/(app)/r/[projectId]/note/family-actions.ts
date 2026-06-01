@@ -28,7 +28,7 @@ export async function addFamilyMemberAction(formData: FormData) {
     sort_order: (maxRow?.sort_order ?? -1) + 1,
   });
 
-  revalidatePath(`/r/${projectId}`, "layout");
+  revalidatePath(`/r/${projectId}/note`); revalidatePath(`/r/${projectId}/plan`);
 }
 
 export async function updateFamilyMemberAction(formData: FormData) {
@@ -52,7 +52,7 @@ export async function updateFamilyMemberAction(formData: FormData) {
   if (Object.keys(patch).length === 0) return;
 
   await admin.from("project_members").update(patch).eq("id", memberId);
-  revalidatePath(`/r/${row.project_id}`, "layout");
+  revalidatePath(`/r/${row.project_id}/note`); revalidatePath(`/r/${row.project_id}/plan`);
 }
 
 export async function deleteFamilyMemberAction(formData: FormData) {
@@ -73,5 +73,5 @@ export async function deleteFamilyMemberAction(formData: FormData) {
   await requireProjectMember(row.project_id);
 
   await admin.from("project_members").delete().eq("id", memberId);
-  revalidatePath(`/r/${row.project_id}`, "layout");
+  revalidatePath(`/r/${row.project_id}/note`); revalidatePath(`/r/${row.project_id}/plan`);
 }

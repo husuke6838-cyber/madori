@@ -13,7 +13,7 @@ export async function addItemAction(formData: FormData) {
   if (!roomId || !text) return;
 
   // 部屋からプロジェクトIDを引く（service_role なので RLS は通らない）
-  const { user, admin } = await requireUser_via_room(roomId);
+  const { user, admin, projectId } = await requireUser_via_room(roomId);
 
   // 現在の最大 sort_order を取得して末尾追加
   const { data: maxRow } = await admin
@@ -38,7 +38,7 @@ export async function addItemAction(formData: FormData) {
     .update({ no_request: false })
     .eq("id", roomId);
 
-  revalidatePathByRoom(roomId);
+  revalidatePathByRoom(roomId, projectId);
 }
 
 /**
@@ -48,9 +48,9 @@ export async function deleteItemAction(formData: FormData) {
   const itemId = String(formData.get("itemId") ?? "");
   if (!itemId) return;
 
-  const { admin, roomId } = await requireUser_via_item(itemId);
+  const { admin, roomId, projectId } = await requireUser_via_item(itemId);
   await admin.from("items").delete().eq("id", itemId);
-  revalidatePathByRoom(roomId);
+  revalidatePathByRoom(roomId, projectId);
 }
 
 /**
@@ -61,7 +61,7 @@ export async function updateItemTextAction(formData: FormData) {
   const text = String(formData.get("text") ?? "").trim();
   if (!itemId || !text) return;
 
-  const { user, admin, roomId } = await requireUser_via_item(itemId);
+  const { user, admin, roomId, projectId } = await requireUser_via_item(itemId);
 
   const { data: current } = await admin
     .from("items")
@@ -83,7 +83,7 @@ export async function updateItemTextAction(formData: FormData) {
       .eq("id", itemId);
   }
 
-  revalidatePathByRoom(roomId);
+  revalidatePathByRoom(roomId, projectId);
 }
 
 /**
@@ -97,7 +97,7 @@ export async function setRatingAction(formData: FormData) {
   if (!itemId || !memberId) return;
   if (stars < 0 || stars > 3 || !Number.isInteger(stars)) return;
 
-  const { admin, roomId } = await requireUser_via_item(itemId);
+  const { admin, roomId, projectId } = await requireUser_via_item(itemId);
 
   if (stars === 0) {
     await admin
@@ -114,7 +114,7 @@ export async function setRatingAction(formData: FormData) {
       );
   }
 
-  revalidatePathByRoom(roomId);
+  revalidatePathByRoom(roomId, projectId);
 }
 
 /**
@@ -125,7 +125,7 @@ export async function updateItemSpecAction(formData: FormData) {
   const spec = String(formData.get("spec_model") ?? "").trim();
   if (!itemId) return;
 
-  const { admin, roomId } = await requireUser_via_item(itemId);
+  const { admin, roomId, projectId } = await requireUser_via_item(itemId);
 
   await admin
     .from("items")
@@ -135,7 +135,7 @@ export async function updateItemSpecAction(formData: FormData) {
     })
     .eq("id", itemId);
 
-  revalidatePathByRoom(roomId);
+  revalidatePathByRoom(roomId, projectId);
 }
 
 /**
@@ -146,14 +146,14 @@ export async function updateItemMemoAction(formData: FormData) {
   const memo = String(formData.get("memo") ?? "").trim();
   if (!itemId) return;
 
-  const { admin, roomId } = await requireUser_via_item(itemId);
+  const { admin, roomId, projectId } = await requireUser_via_item(itemId);
 
   await admin
     .from("items")
     .update({ memo: memo || null, updated_at: new Date().toISOString() })
     .eq("id", itemId);
 
-  revalidatePathByRoom(roomId);
+  revalidatePathByRoom(roomId, projectId);
 }
 
 /**
@@ -199,7 +199,7 @@ export async function addItemImageAction(formData: FormData) {
     sort_order: nextOrder,
   });
 
-  revalidatePathByRoom(roomId);
+  revalidatePathByRoom(roomId, projectId);
 }
 
 /**
@@ -227,7 +227,7 @@ export async function deleteItemImageAction(formData: FormData) {
   await admin.storage.from("item-images").remove([image.storage_path]);
   await admin.from("item_images").delete().eq("id", imageId);
 
-  revalidatePathByRoom(roomId);
+  revalidatePathByRoom(roomId, projectId);
 }
 
 /**
@@ -252,7 +252,7 @@ export async function addItemLinkAction(formData: FormData) {
     | string
     | null;
 
-  const { admin, roomId } = await requireUser_via_item(itemId);
+  const { admin, roomId, projectId } = await requireUser_via_item(itemId);
 
   const { data: maxRow } = await admin
     .from("item_links")
@@ -272,7 +272,7 @@ export async function addItemLinkAction(formData: FormData) {
     sort_order: nextOrder,
   });
 
-  revalidatePathByRoom(roomId);
+  revalidatePathByRoom(roomId, projectId);
 }
 
 /**
@@ -298,7 +298,7 @@ export async function deleteItemLinkAction(formData: FormData) {
   await requireProjectMember(projectId);
 
   await admin.from("item_links").delete().eq("id", linkId);
-  revalidatePathByRoom(roomId);
+  revalidatePathByRoom(roomId, projectId);
 }
 
 /**
@@ -308,7 +308,7 @@ export async function toggleNoRequestAction(formData: FormData) {
   const roomId = String(formData.get("roomId") ?? "");
   if (!roomId) return;
 
-  const { admin } = await requireUser_via_room(roomId);
+  const { admin, projectId } = await requireUser_via_room(roomId);
 
   const { data: room } = await admin
     .from("rooms")
@@ -322,7 +322,7 @@ export async function toggleNoRequestAction(formData: FormData) {
     .update({ no_request: !room.no_request })
     .eq("id", roomId);
 
-  revalidatePathByRoom(roomId);
+  revalidatePathByRoom(roomId, projectId);
 }
 
 // =========================================================
@@ -358,7 +358,14 @@ async function requireUser_via_item(itemId: string) {
   return { ...m, roomId, projectId };
 }
 
-function revalidatePathByRoom(_roomId: string) {
-  // ルームに紐づくノートページを更新（projectIdの取得を省くため layout 全体を再検証）
-  revalidatePath("/r", "layout");
+/**
+ * note タブと plan タブ（要望リストを参照する）のみ再検証する。
+ * /r 全体 layout を invalidate すると invite token や project 情報まで
+ * 再フェッチして重いので避ける。
+ */
+function revalidatePathByRoom(_roomId: string, projectId?: string) {
+  if (projectId) {
+    revalidatePath(`/r/${projectId}/note`);
+    revalidatePath(`/r/${projectId}/plan`);
+  }
 }

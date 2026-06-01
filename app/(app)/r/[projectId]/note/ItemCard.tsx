@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { cn } from "@/lib/ui";
 import { Button } from "@/components/ui/Button";
 import {
@@ -45,22 +45,34 @@ export function ItemCard({
   const [spec, setSpec] = useState(item.specModel ?? "");
   const [pending, startTransition] = useTransition();
 
-  const total = item.ratings.reduce((s, r) => s + r.stars, 0);
+  // 楽観的更新：★クリック直後に画面を更新、サーバ書き込みは裏で
+  const [optimisticRatings, applyOptimisticRating] = useOptimistic(
+    item.ratings,
+    (state: Rating[], change: { memberId: string; stars: number }) => {
+      const others = state.filter((r) => r.member_id !== change.memberId);
+      if (change.stars === 0) return others;
+      return [...others, { member_id: change.memberId, stars: change.stars }];
+    }
+  );
+
+  const total = optimisticRatings.reduce((s, r) => s + r.stars, 0);
   const avg = members.length ? total / members.length : 0;
   const lvl =
     avg >= 2.5 ? "border-l-clay" : avg >= 1.5 ? "border-l-[#d3a26a]" : "border-l-line";
 
   const ratingByMember: Record<string, number> = {};
-  for (const r of item.ratings) ratingByMember[r.member_id] = r.stars;
+  for (const r of optimisticRatings) ratingByMember[r.member_id] = r.stars;
 
   const setStar = (memberId: string, stars: number) => {
     const current = ratingByMember[memberId] ?? 0;
     const next = current === stars ? stars - 1 : stars;
+    const finalStars = Math.max(0, next);
     const fd = new FormData();
     fd.set("itemId", item.id);
     fd.set("memberId", memberId);
-    fd.set("stars", String(Math.max(0, next)));
+    fd.set("stars", String(finalStars));
     startTransition(async () => {
+      applyOptimisticRating({ memberId, stars: finalStars });
       await setRatingAction(fd);
     });
   };
@@ -100,9 +112,8 @@ export function ItemCard({
   return (
     <div
       className={cn(
-        "bg-surface border border-line border-l-[3px] rounded-[var(--radius-card)] px-4 py-3.5 mb-3 shadow-[0_5px_14px_rgba(60,45,30,0.05)]",
-        lvl,
-        pending && "opacity-60"
+        "bg-surface border border-line border-l-[3px] rounded-[var(--radius-card)] px-4 py-3.5 mb-3 shadow-[0_5px_14px_rgba(60,45,30,0.05)] transition-colors",
+        lvl
       )}
     >
       {item.prevTexts.length > 0 && (

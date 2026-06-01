@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { cn } from "@/lib/ui";
 import { LogEditModal, type LogForm } from "./LogEditModal";
 import {
@@ -18,6 +18,10 @@ export type LogItem = {
   status: "done" | "planned";
 };
 
+type OptimisticChange =
+  | { kind: "toggle"; id: string }
+  | { kind: "delete"; id: string };
+
 export function LogTimeline({
   projectId,
   logs,
@@ -28,10 +32,26 @@ export function LogTimeline({
   const [editing, setEditing] = useState<LogItem | null>(null);
   const [, startTransition] = useTransition();
 
+  // 楽観的更新：ステータス切替と削除を即時反映
+  const [optimisticLogs, applyOptimistic] = useOptimistic(
+    logs,
+    (state: LogItem[], change: OptimisticChange) => {
+      if (change.kind === "toggle") {
+        return state.map((l) =>
+          l.id === change.id
+            ? { ...l, status: l.status === "done" ? "planned" : "done" }
+            : l
+        );
+      }
+      return state.filter((l) => l.id !== change.id);
+    }
+  );
+
   const toggleStatus = (id: string) => {
     const fd = new FormData();
     fd.set("id", id);
     startTransition(async () => {
+      applyOptimistic({ kind: "toggle", id });
       await toggleMeetingLogStatusAction(fd);
     });
   };
@@ -57,6 +77,7 @@ export function LogTimeline({
     const fd = new FormData();
     fd.set("id", id);
     startTransition(async () => {
+      applyOptimistic({ kind: "delete", id });
       await deleteMeetingLogAction(fd);
       setEditing(null);
     });
@@ -65,12 +86,14 @@ export function LogTimeline({
   return (
     <>
       <div>
-        {logs.map((log, idx) => (
+        {optimisticLogs.map((log, idx) => (
           <div
             key={log.id}
             className={cn(
               "relative pl-7 ml-1.5",
-              idx < logs.length - 1 ? "pb-5 border-l-2 border-line" : "pb-2"
+              idx < optimisticLogs.length - 1
+                ? "pb-5 border-l-2 border-line"
+                : "pb-2"
             )}
           >
             <button

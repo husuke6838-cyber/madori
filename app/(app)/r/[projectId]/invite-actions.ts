@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { requireProjectMember } from "@/lib/auth";
 
 /**
@@ -36,7 +35,8 @@ export async function ensureInviteTokenAction(projectId: string): Promise<string
   });
   if (error) throw new Error("招待リンクの発行に失敗: " + error.message);
 
-  revalidatePath(`/r/${projectId}`, "layout");
+  // クライアント側 InviteButton で token state を直接更新するため
+  // layout 再検証は不要（重いだけ）
   return token;
 }
 
@@ -49,5 +49,4 @@ export async function revokeInviteAction(formData: FormData) {
     .update({ revoked_at: new Date().toISOString() })
     .eq("project_id", projectId)
     .is("revoked_at", null);
-  revalidatePath(`/r/${projectId}`, "layout");
 }
