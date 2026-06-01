@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getDisplayName } from "@/lib/profile";
 
 /**
  * 招待リンク受け取り。
@@ -64,8 +65,8 @@ export default async function JoinPage({
       .limit(1)
       .maybeSingle();
 
-    const fallbackName =
-      user.email?.split("@")[0]?.slice(0, 20) ?? "新しい家族";
+    // 設定済み表示名があれば使う、無ければメールローカル部
+    const fallbackName = getDisplayName(user).slice(0, 40);
 
     await admin.from("project_members").insert({
       project_id: invite.project_id,

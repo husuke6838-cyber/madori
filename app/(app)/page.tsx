@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { DeleteProjectButton } from "./ProjectCardActions";
+import { getDisplayName } from "@/lib/profile";
 
 export default async function MyPage({
   searchParams,
@@ -22,7 +23,15 @@ export default async function MyPage({
     <main className="flex-1 max-w-md mx-auto w-full px-5 py-6">
       <div className="mb-5">
         <p className="text-xs text-ink-soft">こんにちは</p>
-        <p className="text-sm font-bold mt-0.5">{user.email}</p>
+        <p className="text-base font-bold mt-0.5">
+          {getDisplayName(user)} <span className="text-xs text-ink-faint font-normal">さん</span>
+        </p>
+        <Link
+          href="/me"
+          className="text-[11px] text-clay underline underline-offset-2 mt-1 inline-block tap-44 py-0.5"
+        >
+          表示名を変える
+        </Link>
       </div>
 
       {error && (
