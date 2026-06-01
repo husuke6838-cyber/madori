@@ -25,17 +25,17 @@ export function HintChips({
 
   return (
     <>
-      <div className="text-[10.5px] font-bold tracking-[0.1em] text-ink-faint mt-4 mb-2 px-4">
+      <div className="text-[10px] font-bold tracking-[0.1em] text-faint mt-3 mb-1.5">
         こんな項目はどう？（タップで追加）
       </div>
-      <div className="flex flex-wrap gap-2 px-4">
+      <div className="flex flex-wrap gap-1.5">
         {hints.map((h) => (
           <button
             key={h}
             type="button"
             onClick={() => add(h)}
             disabled={pending}
-            className="border border-dashed border-[#d4c9b6] bg-transparent text-ink-soft text-[12.5px] px-3 py-1.5 rounded-[18px] disabled:opacity-50 tap-44"
+            className="border border-dashed border-line bg-transparent text-soft text-[12px] px-2.5 py-1 rounded-full disabled:opacity-50 tap-44"
           >
             ＋ {h}
           </button>

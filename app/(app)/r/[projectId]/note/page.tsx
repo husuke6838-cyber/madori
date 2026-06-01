@@ -2,16 +2,12 @@ import { requireUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { ROOM_TEMPLATES } from "@/lib/seeds";
 import { FamilyChips } from "./FamilyChips";
-import { RoomTabs } from "./RoomTabs";
-import { RegretCard } from "./RegretCard";
-import { ItemCard, type ItemForCard } from "./ItemCard";
-import { AddItemFAB } from "./AddItemFAB";
-import { HintChips } from "./HintChips";
-import { NoRequestCheck } from "./NoRequestCheck";
-import { SortToggle } from "./SortToggle";
+import { RoomSection } from "./RoomSection";
+import { type ItemForCard } from "./ItemCard";
 
 type ItemRow = {
   id: string;
+  room_id: string;
   text: string;
   memo: string | null;
   spec_model: string | null;
@@ -34,15 +30,14 @@ export default async function NoteTab({
   searchParams,
 }: {
   params: Promise<{ projectId: string }>;
-  searchParams: Promise<{ room?: string; sort?: string }>;
+  searchParams: Promise<{ sort?: string; open?: string }>;
 }) {
   const { projectId } = await params;
-  const { room: roomQuery, sort } = await searchParams;
+  const { sort, open } = await searchParams;
   await requireUser();
 
   const admin = createSupabaseAdminClient();
 
-  // project + members + rooms を 1 クエリで取得（PostgREST nested embed）
   const { data: project } = await admin
     .from("projects")
     .select(
@@ -55,7 +50,7 @@ export default async function NoteTab({
 
   if (!project) {
     return (
-      <main className="px-5 py-10 text-center text-ink-soft">
+      <main className="px-5 py-10 text-center text-soft">
         ルームが見つかりません
       </main>
     );
@@ -88,41 +83,28 @@ export default async function NoteTab({
 
   if (rooms.length === 0) {
     return (
-      <main className="px-5 py-10 text-center text-ink-soft">
+      <main className="px-5 py-10 text-center text-soft">
         ルームを準備中です…
       </main>
     );
   }
 
-  const currentRoom = rooms.find((r) => r.id === roomQuery) ?? rooms[0];
-
-  // items 一覧と件数取得は並列化
-  const [{ data: items }, { data: itemCountRows }] = await Promise.all([
-    admin
-      .from("items")
-      .select(
-        `id, text, memo, spec_model, sort_order,
-         ratings ( member_id, stars ),
-         item_revisions ( prev_text, changed_at ),
-         item_images ( id, storage_path, sort_order ),
-         item_links ( id, url, og_title, og_image, og_desc, sort_order )`
-      )
-      .eq("room_id", currentRoom.id)
-      .order("sort_order"),
-    admin
-      .from("items")
-      .select("room_id")
-      .in("room_id", rooms.map((r) => r.id)),
-  ]);
-
-  const itemCounts: Record<string, number> = {};
-  for (const row of itemCountRows ?? []) {
-    itemCounts[row.room_id] = (itemCounts[row.room_id] ?? 0) + 1;
-  }
+  // 全部屋分の items を一括取得
+  const { data: items } = await admin
+    .from("items")
+    .select(
+      `id, room_id, text, memo, spec_model, sort_order,
+       ratings ( member_id, stars ),
+       item_revisions ( prev_text, changed_at ),
+       item_images ( id, storage_path, sort_order ),
+       item_links ( id, url, og_title, og_image, og_desc, sort_order )`
+    )
+    .in("room_id", rooms.map((r) => r.id))
+    .order("sort_order");
 
   const itemList = (items ?? []) as unknown as ItemRow[];
 
-  // 画像の署名URL一括発行（1時間）
+  // 画像 URL 一括署名
   const allImagePaths = itemList.flatMap((it) =>
     it.item_images.map((im) => im.storage_path)
   );
@@ -136,100 +118,107 @@ export default async function NoteTab({
     }
   }
 
-  const itemCards: ItemForCard[] = itemList.map((it) => ({
-    id: it.id,
-    text: it.text,
-    memo: it.memo,
-    specModel: it.spec_model,
-    ratings: it.ratings ?? [],
-    prevTexts: (it.item_revisions ?? [])
-      .sort(
-        (a, b) =>
-          new Date(a.changed_at).getTime() - new Date(b.changed_at).getTime()
-      )
-      .map((r) => r.prev_text),
-    images: (it.item_images ?? [])
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map((im) => ({
-        id: im.id,
-        signedUrl: signedUrlByPath[im.storage_path] ?? null,
-      })),
-    links: (it.item_links ?? [])
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map((l) => ({
-        id: l.id,
-        url: l.url,
-        og_title: l.og_title,
-        og_image: l.og_image,
-        og_desc: l.og_desc,
-      })),
-  }));
+  // 部屋ID → ItemForCard[]
+  const itemsByRoom: Record<string, ItemForCard[]> = {};
+  for (const it of itemList) {
+    (itemsByRoom[it.room_id] ??= []).push({
+      id: it.id,
+      text: it.text,
+      memo: it.memo,
+      specModel: it.spec_model,
+      ratings: it.ratings ?? [],
+      prevTexts: (it.item_revisions ?? [])
+        .sort(
+          (a, b) =>
+            new Date(a.changed_at).getTime() -
+            new Date(b.changed_at).getTime()
+        )
+        .map((r) => r.prev_text),
+      images: (it.item_images ?? [])
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((im) => ({
+          id: im.id,
+          signedUrl: signedUrlByPath[im.storage_path] ?? null,
+        })),
+      links: (it.item_links ?? [])
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((l) => ({
+          id: l.id,
+          url: l.url,
+          og_title: l.og_title,
+          og_image: l.og_image,
+          og_desc: l.og_desc,
+        })),
+    });
+  }
 
   const sortByStars = sort === "stars";
-  const sortedItems = sortByStars
-    ? [...itemCards].sort(
-        (a, b) =>
-          b.ratings.reduce((s, r) => s + r.stars, 0) -
-          a.ratings.reduce((s, r) => s + r.stars, 0)
-      )
-    : itemCards;
+  const openIds = new Set(
+    (open ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
 
-  const template = ROOM_TEMPLATES.find((t) => t.name === currentRoom.name);
-  const hints = template?.hints ?? [];
+  // 進捗：要望あり OR 「要望なし✓」の部屋を「完了」とみなす
+  const completed = rooms.filter(
+    (r) => (itemsByRoom[r.id]?.length ?? 0) > 0 || r.no_request
+  ).length;
+  const totalRooms = rooms.length;
+  const progressPct = Math.round((completed / totalRooms) * 100);
 
   return (
-    <>
+    <main className="pb-32 max-w-md mx-auto md:max-w-lg">
       <FamilyChips projectId={projectId} members={members} />
-      <RoomTabs
-        rooms={rooms}
-        currentRoomId={currentRoom.id}
-        projectId={projectId}
-        itemCounts={itemCounts}
-      />
 
-      <div className="px-4 pt-1 pb-2 flex items-end gap-2">
-        <span className="font-mincho text-[25px]">{currentRoom.name}</span>
-        {currentRoom.desired_jou && (
-          <span className="text-[11px] font-bold text-[#9c6a3a] bg-[#f6ead9] border border-[#ecd6bd] px-2.5 py-1 rounded-[14px] mb-1">
-            希望 {currentRoom.desired_jou}帖
+      {/* 進捗バー */}
+      <div className="px-4 mt-2 mb-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[11.5px] font-bold text-soft tracking-wide">
+            記入の進みぐあい
           </span>
-        )}
-        <div className="ml-auto mb-1">
-          <SortToggle
-            projectId={projectId}
-            roomId={currentRoom.id}
-            sortByStars={sortByStars}
+          <span className="text-[11.5px] font-bold text-ink">
+            {completed} <span className="text-faint font-medium">/</span>{" "}
+            {totalRooms} 部屋
+          </span>
+        </div>
+        <div className="h-1.5 rounded-full bg-line overflow-hidden">
+          <div
+            className="h-full bg-accent transition-[width] duration-500"
+            style={{ width: `${progressPct}%` }}
           />
         </div>
       </div>
-      <div className="px-4 text-[12.5px] text-ink-soft mb-3">
-        {currentRoom.subtitle ?? "理想を書きためよう"}
+
+      {/* 部屋アコーディオン */}
+      <div className="px-3 space-y-2">
+        {rooms.map((room, i) => {
+          const roomItems = itemsByRoom[room.id] ?? [];
+          const sortedItems = sortByStars
+            ? [...roomItems].sort(
+                (a, b) =>
+                  b.ratings.reduce((s, r) => s + r.stars, 0) -
+                  a.ratings.reduce((s, r) => s + r.stars, 0)
+              )
+            : roomItems;
+          const template = ROOM_TEMPLATES.find((t) => t.name === room.name);
+          const isOpen =
+            openIds.size > 0 ? openIds.has(room.id) : i === 0; // 既定: 先頭のみ開く
+
+          return (
+            <RoomSection
+              key={room.id}
+              room={room}
+              items={sortedItems}
+              members={members}
+              hints={template?.hints ?? []}
+              defaultOpen={isOpen}
+              projectId={projectId}
+              sortByStars={sortByStars}
+            />
+          );
+        })}
       </div>
-
-      <RegretCard roomName={currentRoom.name} />
-
-      <div className="px-4">
-        {sortedItems.length === 0 && !currentRoom.no_request && (
-          <div className="text-center py-6 px-4 text-[13px] text-ink-faint border border-dashed border-line rounded-[14px] bg-surface-2 mb-3">
-            まだ要望がありません。
-            <br />
-            右下の ＋ ボタン、または下のヒントから追加できます ✏️
-          </div>
-        )}
-
-        {sortedItems.map((it) => (
-          <ItemCard key={it.id} item={it} members={members} />
-        ))}
-      </div>
-
-      <NoRequestCheck
-        roomId={currentRoom.id}
-        checked={currentRoom.no_request}
-      />
-
-      <HintChips roomId={currentRoom.id} hints={hints} />
-
-      <AddItemFAB roomId={currentRoom.id} roomName={currentRoom.name} />
-    </>
+    </main>
   );
 }

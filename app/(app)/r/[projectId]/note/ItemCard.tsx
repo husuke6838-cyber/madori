@@ -35,9 +35,12 @@ export type ItemForCard = {
 export function ItemCard({
   item,
   members,
+  compact = false,
 }: {
   item: ItemForCard;
   members: Member[];
+  /** コンパクト表示：★を 12px、メンバー名を1文字に。縦アコーディオン用 */
+  compact?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(item.text);
@@ -196,21 +199,32 @@ export function ItemCard({
         </div>
       )}
 
-      <div className="flex flex-col gap-1.5 mt-2.5">
+      <div
+        className={cn(
+          "mt-2.5",
+          compact ? "flex flex-wrap gap-x-3 gap-y-1.5" : "flex flex-col gap-1.5"
+        )}
+      >
         {members.map((m) => {
           const v = ratingByMember[m.id] ?? 0;
           return (
-            <div key={m.id} className="flex items-center gap-2">
+            <div key={m.id} className="flex items-center gap-1.5">
               <span
-                className="text-[11px] font-bold px-2 py-0.5 rounded min-w-[54px] text-center"
+                className={cn(
+                  "font-bold text-center rounded",
+                  compact
+                    ? "text-[10.5px] px-1.5 py-0.5 min-w-[20px]"
+                    : "text-[11px] px-2 py-0.5 min-w-[54px]"
+                )}
                 style={{
                   background: m.color + "22",
                   color: darken(m.color),
                 }}
+                aria-label={m.name}
               >
-                {m.name}
+                {compact ? shortName(m.name) : m.name}
               </span>
-              <div className="flex gap-1">
+              <div className={compact ? "flex gap-0" : "flex gap-1"}>
                 {[1, 2, 3].map((n) => {
                   const on = n <= v;
                   return (
@@ -220,8 +234,11 @@ export function ItemCard({
                       onClick={() => setStar(m.id, n)}
                       disabled={pending}
                       aria-label={`${m.name} に ★${n}`}
-                      className="text-[20px] leading-none px-0.5 tap-44"
-                      style={{ color: on ? m.color : "#dcd2c2" }}
+                      className={cn(
+                        "leading-none tap-44 flex items-center justify-center",
+                        compact ? "text-[13px] px-0.5 min-h-[28px] min-w-[20px]" : "text-[20px] px-0.5"
+                      )}
+                      style={{ color: on ? m.color : "#d4d4d4" }}
                     >
                       ★
                     </button>
@@ -257,6 +274,13 @@ export function ItemCard({
       )}
     </div>
   );
+}
+
+/** 「奥さん」「旦那さん」→ 「奥」「旦」 のような1-2文字短縮 */
+function shortName(n: string) {
+  // 「〇〇さん」「〇〇くん」→ 先頭1文字
+  const stripped = n.replace(/(さん|くん|ちゃん)$/u, "");
+  return stripped.length <= 2 ? stripped : stripped.charAt(0);
 }
 
 function darken(hex: string) {

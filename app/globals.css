@@ -126,6 +126,23 @@ body {
 /* タッチ操作優先：最低タップ領域 44px */
 .tap-44 { min-height: 44px; min-width: 44px; }
 
+/* ----- ノート縦アコーディオン用 ----- */
+/* summary のデフォルトマーカーを消す */
+details > summary::-webkit-details-marker { display: none; }
+details > summary::marker { display: none; }
+/* 開時のシェブロン回転 */
+details[open] > summary .acc-chevron { transform: rotate(90deg); }
+/* 開時はクローズ時プレビューを隠す */
+details[open] .acc-preview { display: none; }
+/* スムーズな開閉アニメ（Chrome 系のみ） */
+@supports (interpolate-size: allow-keywords) {
+  details[open]::details-content {
+    block-size: auto;
+    overflow: clip;
+    transition: block-size .25s ease, content-visibility .25s ease allow-discrete;
+  }
+}
+
 @media print {
   body { background: #fff; color: #000; }
   .no-print, [data-theme="dark"] { display: none !important; }

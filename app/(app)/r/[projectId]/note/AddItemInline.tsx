@@ -5,7 +5,11 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { addItemAction } from "./actions";
 
-export function AddItemFAB({
+/**
+ * 部屋アコーディオン内に置く「＋ 要望を追加」ボタン。
+ * 旧 AddItemFAB の縦アコーディオン版。FAB は廃止。
+ */
+export function AddItemInline({
   roomId,
   roomName,
 }: {
@@ -34,10 +38,9 @@ export function AddItemFAB({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="要望を追加"
-        className="fixed right-5 bottom-24 z-20 w-14 h-14 rounded-2xl text-white text-2xl font-bold shadow-[0_12px_24px_-7px_rgba(189,93,58,0.55)] bg-gradient-to-br from-clay to-[#a84e30] grid place-items-center"
+        className="w-full mt-2 mb-1 py-2.5 rounded-[12px] border border-dashed border-accent text-accent bg-accent-soft hover:opacity-90 text-[13px] font-bold tap-44"
       >
-        ＋
+        ＋ 要望を追加
       </button>
 
       <Modal
@@ -51,7 +54,7 @@ export function AddItemFAB({
           rows={4}
           autoFocus
           placeholder="例: 玄関は南向きにしたい / コンセントを多めに / ……"
-          className="w-full px-3 py-2.5 text-[15px] bg-surface text-ink rounded-[var(--radius-btn)] border border-line placeholder:text-ink-faint focus:outline-none focus:border-clay focus:ring-2 focus:ring-clay-soft resize-none"
+          className="w-full px-3 py-2.5 text-[15px] bg-surf text-ink rounded-[var(--radius-btn)] border border-line placeholder:text-faint focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft resize-none"
         />
         <div className="mt-3.5 flex gap-2.5">
           <Button

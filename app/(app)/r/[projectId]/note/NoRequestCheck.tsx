@@ -31,15 +31,14 @@ export function NoRequestCheck({
       type="button"
       onClick={toggle}
       className={cn(
-        "w-full flex items-center gap-2.5 px-3.5 py-3 border border-dashed border-line rounded-[13px] bg-surface-2 text-[13px] mx-4 mt-3 tap-44",
-        optimisticChecked ? "text-ink-faint line-through" : "text-ink-soft"
+        "w-full flex items-center gap-2.5 px-3.5 py-2.5 border border-dashed border-line rounded-[13px] bg-bg text-[12.5px] mt-3 tap-44",
+        optimisticChecked ? "text-faint line-through" : "text-soft"
       )}
-      style={{ width: "calc(100% - 2rem)" }}
     >
       <span
         className={cn(
           "w-[19px] h-[19px] rounded-md border-[1.5px] grid place-items-center text-[13px] text-white flex-shrink-0",
-          optimisticChecked ? "bg-sage border-sage" : "border-ink-faint"
+          optimisticChecked ? "bg-sage border-sage" : "border-faint"
         )}
       >
         {optimisticChecked ? "✓" : ""}
