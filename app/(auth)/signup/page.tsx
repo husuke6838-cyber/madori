@@ -16,7 +16,7 @@ export default async function SignUpPage({
 
   return (
     <div className="bg-surface border border-line rounded-[var(--radius-card)] shadow-[0_5px_14px_rgba(60,45,30,0.05)] p-6">
-      <h2 className="font-mincho text-xl mb-5">新規登録</h2>
+      <h2 className="text-xl font-bold mb-5">新規登録</h2>
 
       {error && (
         <p className="mb-4 text-xs bg-clay-soft text-[#8a3d20] border border-[#ecc7b3] rounded-lg px-3 py-2.5 leading-relaxed">

@@ -255,7 +255,7 @@ export function FloorplanEditor({
   return (
     <div>
       <div className="px-4 pt-3 flex items-center gap-2">
-        <span className="font-mincho text-[22px]">間取り</span>
+        <span className="text-[22px] font-bold">間取り</span>
         <button
           type="button"
           onClick={() => { setNewName(current.name); setRenameOpen(true); }}
@@ -438,7 +438,7 @@ export function FloorplanEditor({
             return (
               <button key={key} type="button" onClick={() => addRoom(key)}
                 className="border border-line bg-surface rounded-xl px-2 py-3 text-center tap-44 active:bg-surface-2">
-                <div className="font-mincho text-[14px]">{p.label}</div>
+                <div className="text-[14px] font-bold">{p.label}</div>
                 <div className="text-[10px] text-ink-faint mt-0.5">{p.w}×{p.h} ({cellsToJou(p.w, p.h)}帖)</div>
               </button>
             );
@@ -641,7 +641,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between items-baseline py-0.5 text-[13px]">
       <span className="text-ink-soft text-[12px]">{label}</span>
-      <b className="font-mincho text-[16px]">{value}</b>
+      <b className="text-[16px] font-bold tracking-tight">{value}</b>
     </div>
   );
 }

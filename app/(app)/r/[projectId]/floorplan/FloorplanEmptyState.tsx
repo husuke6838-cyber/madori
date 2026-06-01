@@ -10,7 +10,7 @@ export function FloorplanEmptyState({
 }) {
   return (
     <main className="px-5 py-6">
-      <div className="font-mincho text-2xl mb-1">間取り</div>
+      <div className="text-2xl font-bold mb-1">間取り</div>
       <p className="text-xs text-ink-soft mb-6 leading-relaxed">
         マス目に部屋を置いて、理想の間取りを2Dで描く。
         <br />

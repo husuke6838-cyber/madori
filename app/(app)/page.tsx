@@ -40,7 +40,7 @@ export default async function MyPage({
         </p>
       )}
 
-      <h2 className="font-mincho text-lg mb-3">あなたのルーム</h2>
+      <h2 className="text-lg font-bold mb-3">あなたのルーム</h2>
 
       {projects.length === 0 ? (
         <div className="border border-dashed border-line bg-surface-2 rounded-[var(--radius-card)] px-5 py-8 text-center text-sm text-ink-soft">

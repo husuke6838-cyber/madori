@@ -16,7 +16,7 @@ export default async function LoginPage({
 
   return (
     <div className="bg-surface border border-line rounded-[var(--radius-card)] shadow-[0_5px_14px_rgba(60,45,30,0.05)] p-6">
-      <h2 className="font-mincho text-xl mb-5">ログイン</h2>
+      <h2 className="text-xl font-bold mb-5">ログイン</h2>
 
       {notice && (
         <p className="mb-4 text-xs bg-sage-soft text-[#46532f] border border-[#d6ddc7] rounded-lg px-3 py-2.5 leading-relaxed">

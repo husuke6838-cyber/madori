@@ -68,7 +68,7 @@ export function PlanToolbar({
   return (
     <div className="px-5 pt-4 pb-3 print:hidden">
       <div className="bg-surface border border-line rounded-[var(--radius-card)] p-4 shadow-[0_5px_14px_rgba(60,45,30,0.05)]">
-        <h3 className="font-mincho text-[15px] mb-2">工務店に渡す</h3>
+        <h3 className="text-[15px] font-bold mb-2">工務店に渡す</h3>
 
         {shareUrl ? (
           <>

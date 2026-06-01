@@ -21,7 +21,7 @@ export default async function NewProjectPage({
         </Link>
       </div>
 
-      <h2 className="font-mincho text-2xl mb-2">新しいルームを作る</h2>
+      <h2 className="text-2xl font-bold mb-2">新しいルームを作る</h2>
       <p className="text-xs text-ink-soft mb-6 leading-relaxed">
         ルーム＝1件の家づくり。家族と共有して使う「家づくりノート」です。
         <br />

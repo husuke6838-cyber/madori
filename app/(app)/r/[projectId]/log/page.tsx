@@ -30,7 +30,7 @@ export default async function LogTab({
   return (
     <>
       <main className="px-5 py-5">
-        <div className="font-mincho text-2xl mb-1">打ち合わせの記録</div>
+        <div className="text-2xl font-bold mb-1">打ち合わせの記録</div>
         <p className="text-xs text-ink-soft mb-6 leading-relaxed">
           いつ・何を話したか・担当の方の回答をタイムラインで残す。
           <br />

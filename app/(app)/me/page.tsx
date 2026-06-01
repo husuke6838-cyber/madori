@@ -25,7 +25,7 @@ export default async function MePage({
         </Link>
       </div>
 
-      <h2 className="font-mincho text-2xl mb-2">プロフィール</h2>
+      <h2 className="text-2xl font-bold mb-2">プロフィール</h2>
       <p className="text-xs text-ink-soft mb-6 leading-relaxed">
         アプリ内に表示されるあなたの名前を設定できます。
         <br />

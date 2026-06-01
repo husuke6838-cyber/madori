@@ -47,7 +47,7 @@ export default async function WelcomePage({
           <div className="mx-auto mb-3 w-14 h-14 rounded-2xl bg-clay text-white grid place-items-center text-2xl font-bold shadow-lg">
             家
           </div>
-          <h1 className="font-mincho text-2xl mb-2">ようこそ！</h1>
+          <h1 className="text-2xl font-bold mb-2">ようこそ！</h1>
           <p className="text-xs text-ink-soft leading-relaxed">
             登録ありがとうございます 🌱
             <br />

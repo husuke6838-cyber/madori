@@ -7,7 +7,7 @@ export default function NotFound() {
         <div className="mx-auto mb-4 w-14 h-14 rounded-2xl bg-clay-soft text-clay grid place-items-center text-2xl">
           🔗
         </div>
-        <h1 className="font-mincho text-xl mb-2">
+        <h1 className="text-xl font-bold mb-2">
           共有リンクが見つかりませんでした
         </h1>
         <p className="text-sm text-ink-soft leading-relaxed mb-6">
