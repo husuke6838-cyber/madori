@@ -35,7 +35,8 @@ export function FloorplanToolSidebar({
 
   return (
     <aside
-      className="w-[78px] flex-shrink-0 border-l border-line bg-surface-2/50 overflow-y-auto [scrollbar-width:none]"
+      className="w-[78px] flex-shrink-0 border-l border-line bg-surface-2/50 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:w-0"
+      style={{ maxHeight: "min(60vh, 560px)" }}
     >
       {topContent}
       {sections.map((section, idx) => {

@@ -71,12 +71,11 @@ export function FloorplanEditor({
   const canvasRef = useRef<CanvasHandle>(null);
 
   const clampZoom = (z: number) => Math.max(0.3, Math.min(2, Math.round(z * 100) / 100));
-  const zoomIn = () => setZoom((z) => clampZoom(z + 0.1));
-  const zoomOut = () => setZoom((z) => clampZoom(z - 0.1));
   const fitToScreen = () => {
     const w = canvasRef.current?.getViewportWidth() ?? 0;
     if (w > 0) setZoom(clampZoom(w / (30 * 26)));
   };
+  const handleZoomChange = (z: number) => setZoom(clampZoom(z));
 
   const scheduleSave = (next: FloorplanData) => {
     setSaveState("dirty");
@@ -333,15 +332,12 @@ export function FloorplanEditor({
             onDoorChange={updateDoor}
             onWindowChange={updateWindow}
             onFixtureChange={updateFixture}
+            onZoomChange={handleZoomChange}
           />
         </div>
         <FloorplanToolSidebar
           topContent={
             <SidebarTop
-              zoom={zoom}
-              onZoomIn={zoomIn}
-              onZoomOut={zoomOut}
-              onReset={() => setZoom(1)}
               onFit={fitToScreen}
               selected={selected}
               selectionLabel={selectionLabel}
@@ -471,10 +467,6 @@ export function FloorplanEditor({
 }
 
 function SidebarTop({
-  zoom,
-  onZoomIn,
-  onZoomOut,
-  onReset,
   onFit,
   selected,
   selectionLabel,
@@ -484,10 +476,6 @@ function SidebarTop({
   onFlip,
   onDelete,
 }: {
-  zoom: number;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onReset: () => void;
   onFit: () => void;
   selected: Selection;
   selectionLabel: string | null;
@@ -499,41 +487,12 @@ function SidebarTop({
 }) {
   return (
     <>
-      {/* ズーム */}
+      {/* 全体表示。ズーム ±はキャンバス右下に移動済み */}
       <div className="border-b border-line bg-paper/60 px-1 py-2">
-        <div className="text-[8.5px] font-bold tracking-wider text-center text-ink-faint mb-1">
-          ZOOM
-        </div>
-        <div className="flex justify-center gap-0.5">
-          <button
-            type="button"
-            onClick={onZoomOut}
-            aria-label="ズームアウト"
-            className="w-7 h-7 grid place-items-center rounded-md bg-surface border border-line text-ink-soft active:bg-surface-2 tap-44"
-          >
-            −
-          </button>
-          <button
-            type="button"
-            onClick={onReset}
-            className="text-[10px] font-bold text-ink-soft px-1 grid place-items-center min-w-[28px] tap-44"
-            title="100%にリセット"
-          >
-            {Math.round(zoom * 100)}%
-          </button>
-          <button
-            type="button"
-            onClick={onZoomIn}
-            aria-label="ズームイン"
-            className="w-7 h-7 grid place-items-center rounded-md bg-surface border border-line text-ink-soft active:bg-surface-2 tap-44"
-          >
-            ＋
-          </button>
-        </div>
         <button
           type="button"
           onClick={onFit}
-          className="w-full mt-1.5 text-[10px] font-bold text-clay border border-clay-soft bg-clay-soft/40 rounded-md py-1 tap-44"
+          className="w-full text-[10px] font-bold text-clay border border-clay-soft bg-clay-soft/40 rounded-md py-1.5 tap-44"
         >
           ⛶ 全体
         </button>

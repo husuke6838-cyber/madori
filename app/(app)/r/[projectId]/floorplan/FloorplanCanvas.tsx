@@ -56,6 +56,8 @@ const FloorplanCanvas = forwardRef<
     onDoorChange: (id: string, patch: Partial<DoorShape>) => void;
     onWindowChange: (id: string, patch: Partial<WindowShape>) => void;
     onFixtureChange: (id: string, patch: Partial<FixtureShape>) => void;
+    /** ピンチ／Ctrl+ホイールで呼ばれる。範囲は呼び出し側でクランプ済み */
+    onZoomChange?: (zoom: number) => void;
   }
 >(function FloorplanCanvas(
   {
@@ -67,11 +69,78 @@ const FloorplanCanvas = forwardRef<
     onDoorChange,
     onWindowChange,
     onFixtureChange,
+    onZoomChange,
   },
   ref
 ) {
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef(zoom);
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  /**
+   * キャンバス上でのズームジェスチャ。
+   * - 2本指ピンチ: 距離比でスケール
+   * - Ctrl/⌘+ホイール（macOSトラックパッドのピンチもこれ）: deltaY でスケール
+   * 普通のホイールスクロールはそのままパン操作として通す。
+   */
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !onZoomChange) return;
+
+    const clamp = (z: number) =>
+      Math.max(0.3, Math.min(2, Math.round(z * 100) / 100));
+
+    let pinchStart: { dist: number; zoom: number } | null = null;
+
+    const distOf = (t1: Touch, t2: Touch) =>
+      Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        pinchStart = {
+          dist: distOf(e.touches[0], e.touches[1]),
+          zoom: zoomRef.current,
+        };
+      }
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && pinchStart) {
+        e.preventDefault();
+        const ratio =
+          distOf(e.touches[0], e.touches[1]) / pinchStart.dist;
+        onZoomChange(clamp(pinchStart.zoom * ratio));
+      }
+    };
+    const onTouchEnd = () => {
+      pinchStart = null;
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      // 普通のスクロールはそのまま通す。Ctrl/⌘ 押下時のみズーム。
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = -e.deltaY * 0.005;
+        onZoomChange(clamp(zoomRef.current + delta));
+      }
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+    el.addEventListener("wheel", onWheel, { passive: false });
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+      el.removeEventListener("wheel", onWheel);
+    };
+  }, [onZoomChange]);
 
   useImperativeHandle(ref, () => ({
     toDataURL: () => {
@@ -98,12 +167,44 @@ const FloorplanCanvas = forwardRef<
     getViewportWidth: () => containerRef.current?.clientWidth ?? 0,
   }));
 
+  const clampZoom = (z: number) =>
+    Math.max(0.3, Math.min(2, Math.round(z * 100) / 100));
+
   return (
-    <div
-      ref={containerRef}
-      className="overflow-auto bg-[#f8f3ec] border-y border-line touch-pan-x touch-pan-y"
-      style={{ maxHeight: "min(60vh, 560px)", minHeight: 320 }}
-    >
+    <div className="relative">
+      {/* キャンバス右下のフローティング ズーム コントロール */}
+      {onZoomChange && (
+        <div
+          className="absolute right-2 bottom-2 z-10 flex flex-col gap-1 bg-surf/95 backdrop-blur border border-line rounded-xl shadow-md p-1"
+          aria-label="ズーム"
+        >
+          <button
+            type="button"
+            onClick={() => onZoomChange(clampZoom(zoom + 0.1))}
+            aria-label="ズームイン"
+            className="w-9 h-9 grid place-items-center rounded-lg text-ink active:bg-bg tap-44 text-[18px] leading-none"
+          >
+            ＋
+          </button>
+          <div className="text-center text-[10px] font-bold text-soft tabular-nums">
+            {Math.round(zoom * 100)}%
+          </div>
+          <button
+            type="button"
+            onClick={() => onZoomChange(clampZoom(zoom - 0.1))}
+            aria-label="ズームアウト"
+            className="w-9 h-9 grid place-items-center rounded-lg text-ink active:bg-bg tap-44 text-[18px] leading-none"
+          >
+            −
+          </button>
+        </div>
+      )}
+
+      <div
+        ref={containerRef}
+        className="overflow-auto bg-[#f8f3ec] border-y border-line touch-pan-x touch-pan-y"
+        style={{ maxHeight: "min(60vh, 560px)", minHeight: 320 }}
+      >
       <Stage
         ref={stageRef}
         width={STAGE_W * zoom}
@@ -193,6 +294,7 @@ const FloorplanCanvas = forwardRef<
           ))}
         </Layer>
       </Stage>
+      </div>
     </div>
   );
 });
