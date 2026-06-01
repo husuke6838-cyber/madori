@@ -1,15 +1,29 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Stage, Layer, Line, Rect, Text, Group, Transformer } from "react-konva";
+import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
+import {
+  Stage,
+  Layer,
+  Line,
+  Rect,
+  Text,
+  Group,
+  Arc,
+  Transformer,
+  Arrow,
+} from "react-konva";
 import type Konva from "konva";
-import { cellsToJou, type FloorplanData, type RoomShape } from "@/lib/floorplan";
+import {
+  cellsToJou,
+  type FloorplanData,
+  type RoomShape,
+  type DoorShape,
+  type WindowShape,
+  type FixtureShape,
+} from "@/lib/floorplan";
 
-/**
- * 1セル = 半間 = 910mm を画面上では CELL_PX として扱う。
- * COLS × ROWS で 26マス（約23.7m）四方の編集領域を用意。
- */
 const CELL_PX = 30;
+const HALF = CELL_PX / 2;
 const COLS = 26;
 const ROWS = 26;
 const STAGE_W = CELL_PX * COLS;
@@ -17,21 +31,56 @@ const STAGE_H = CELL_PX * ROWS;
 const WALL = "#9c907c";
 const GRID = "#e9e0d0";
 const CLAY = "#bd5d3a";
+const PAPER = "#f8f3ec";
 
-export default function FloorplanCanvas({
-  data,
-  selectedId,
-  onSelect,
-  onRoomChange,
-}: {
-  data: FloorplanData;
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
-  onRoomChange: (id: string, patch: Partial<RoomShape>) => void;
-}) {
+export type Selection =
+  | { type: "room"; id: string }
+  | { type: "door"; id: string }
+  | { type: "window"; id: string }
+  | { type: "fixture"; id: string }
+  | null;
+
+export type CanvasHandle = {
+  toDataURL: () => string | null;
+};
+
+const FloorplanCanvas = forwardRef<
+  CanvasHandle,
+  {
+    data: FloorplanData;
+    selected: Selection;
+    onSelect: (sel: Selection) => void;
+    onRoomChange: (id: string, patch: Partial<RoomShape>) => void;
+    onDoorChange: (id: string, patch: Partial<DoorShape>) => void;
+    onWindowChange: (id: string, patch: Partial<WindowShape>) => void;
+    onFixtureChange: (id: string, patch: Partial<FixtureShape>) => void;
+  }
+>(function FloorplanCanvas(
+  {
+    data,
+    selected,
+    onSelect,
+    onRoomChange,
+    onDoorChange,
+    onWindowChange,
+    onFixtureChange,
+  },
+  ref
+) {
+  const stageRef = useRef<Konva.Stage>(null);
+
+  useImperativeHandle(ref, () => ({
+    toDataURL: () => {
+      const stage = stageRef.current;
+      if (!stage) return null;
+      return stage.toDataURL({ pixelRatio: 2, mimeType: "image/png" });
+    },
+  }));
+
   return (
-    <div className="overflow-auto bg-[#f8f3ec] border-y border-line touch-pan-x touch-pan-y">
+    <div className="overflow-auto bg-[#f8f3ec] border-y border-line">
       <Stage
+        ref={stageRef}
         width={STAGE_W}
         height={STAGE_H}
         onMouseDown={(e) => {
@@ -41,7 +90,6 @@ export default function FloorplanCanvas({
           if (e.target === e.target.getStage()) onSelect(null);
         }}
       >
-        {/* グリッド */}
         <Layer listening={false}>
           {Array.from({ length: COLS + 1 }).map((_, i) => (
             <Line
@@ -59,7 +107,6 @@ export default function FloorplanCanvas({
               strokeWidth={1}
             />
           ))}
-          {/* 外枠（壁色） */}
           <Rect
             x={0}
             y={0}
@@ -71,23 +118,63 @@ export default function FloorplanCanvas({
           />
         </Layer>
 
-        {/* 部屋 */}
         <Layer>
           {data.rooms.map((room) => (
             <RoomNode
               key={room.id}
               room={room}
-              selected={selectedId === room.id}
-              onSelect={() => onSelect(room.id)}
-              onChange={(patch) => onRoomChange(room.id, patch)}
+              selected={
+                selected?.type === "room" && selected.id === room.id
+              }
+              onSelect={() => onSelect({ type: "room", id: room.id })}
+              onChange={(p) => onRoomChange(room.id, p)}
+            />
+          ))}
+
+          {data.fixtures.map((fx) => (
+            <FixtureNode
+              key={fx.id}
+              fx={fx}
+              selected={
+                selected?.type === "fixture" && selected.id === fx.id
+              }
+              onSelect={() => onSelect({ type: "fixture", id: fx.id })}
+              onChange={(p) => onFixtureChange(fx.id, p)}
+            />
+          ))}
+        </Layer>
+
+        {/* 建具・窓はトップレイヤ（壁の上に描く） */}
+        <Layer>
+          {data.doors.map((d) => (
+            <DoorNode
+              key={d.id}
+              door={d}
+              selected={selected?.type === "door" && selected.id === d.id}
+              onSelect={() => onSelect({ type: "door", id: d.id })}
+              onChange={(p) => onDoorChange(d.id, p)}
+            />
+          ))}
+          {data.windows.map((w) => (
+            <WindowNode
+              key={w.id}
+              win={w}
+              selected={selected?.type === "window" && selected.id === w.id}
+              onSelect={() => onSelect({ type: "window", id: w.id })}
+              onChange={(p) => onWindowChange(w.id, p)}
             />
           ))}
         </Layer>
       </Stage>
     </div>
   );
-}
+});
 
+export default FloorplanCanvas;
+
+// =========================================================
+// 部屋
+// =========================================================
 function RoomNode({
   room,
   selected,
@@ -102,7 +189,6 @@ function RoomNode({
   const groupRef = useRef<Konva.Group>(null);
   const trRef = useRef<Konva.Transformer>(null);
 
-  // 選択中は Transformer をアタッチ
   useEffect(() => {
     if (selected && groupRef.current && trRef.current) {
       trRef.current.nodes([groupRef.current]);
@@ -131,34 +217,27 @@ function RoomNode({
           onSelect();
         }}
         onDragMove={(e) => {
-          // ドラッグ中もグリッドにスナップ
           const node = e.target;
-          const nx = Math.max(
-            0,
-            Math.min((COLS - room.w) * CELL_PX, snapToCell(node.x()))
-          );
-          const ny = Math.max(
-            0,
-            Math.min((ROWS - room.h) * CELL_PX, snapToCell(node.y()))
-          );
+          const nx = Math.max(0, Math.min((COLS - room.w) * CELL_PX, snapToCell(node.x())));
+          const ny = Math.max(0, Math.min((ROWS - room.h) * CELL_PX, snapToCell(node.y())));
           node.position({ x: nx, y: ny });
         }}
         onDragEnd={(e) => {
           const node = e.target;
-          const nx = Math.round(node.x() / CELL_PX);
-          const ny = Math.round(node.y() / CELL_PX);
-          onChange({ x: nx, y: ny });
+          onChange({
+            x: Math.round(node.x() / CELL_PX),
+            y: Math.round(node.y() / CELL_PX),
+          });
         }}
         onTransformEnd={() => {
-          // セル単位で丸める
           const node = groupRef.current;
           if (!node) return;
-          const scaleX = node.scaleX();
-          const scaleY = node.scaleY();
+          const sX = node.scaleX();
+          const sY = node.scaleY();
           node.scaleX(1);
           node.scaleY(1);
-          const newW = Math.max(1, Math.round(room.w * scaleX));
-          const newH = Math.max(1, Math.round(room.h * scaleY));
+          const newW = Math.max(1, Math.round(room.w * sX));
+          const newH = Math.max(1, Math.round(room.h * sY));
           const nx = Math.round(node.x() / CELL_PX);
           const ny = Math.round(node.y() / CELL_PX);
           onChange({
@@ -200,7 +279,6 @@ function RoomNode({
           listening={false}
         />
       </Group>
-
       {selected && (
         <Transformer
           ref={trRef}
@@ -221,11 +299,10 @@ function RoomNode({
           anchorFill="#ffffff"
           borderStroke={CLAY}
           borderDash={[4, 4]}
-          // セル単位スナップを意識した最小サイズ
-          boundBoxFunc={(_oldBox, newBox) => {
-            if (newBox.width < CELL_PX) newBox.width = CELL_PX;
-            if (newBox.height < CELL_PX) newBox.height = CELL_PX;
-            return newBox;
+          boundBoxFunc={(_o, n) => {
+            if (n.width < CELL_PX) n.width = CELL_PX;
+            if (n.height < CELL_PX) n.height = CELL_PX;
+            return n;
           }}
         />
       )}
@@ -233,6 +310,361 @@ function RoomNode({
   );
 }
 
+// =========================================================
+// 建具：開き戸 / 引き戸 / 折れ戸
+// =========================================================
+function DoorNode({
+  door,
+  selected,
+  onSelect,
+  onChange,
+}: {
+  door: DoorShape;
+  selected: boolean;
+  onSelect: () => void;
+  onChange: (patch: Partial<DoorShape>) => void;
+}) {
+  const W = door.w * CELL_PX;
+  const H = door.h * CELL_PX;
+
+  return (
+    <Group
+      x={door.x * HALF}
+      y={door.y * HALF}
+      rotation={door.rot}
+      offsetX={W / 2}
+      offsetY={H / 2}
+      draggable
+      onClick={(e) => {
+        e.cancelBubble = true;
+        onSelect();
+      }}
+      onTap={(e) => {
+        e.cancelBubble = true;
+        onSelect();
+      }}
+      onDragMove={(e) => {
+        const node = e.target;
+        node.position({
+          x: snapToHalf(node.x()),
+          y: snapToHalf(node.y()),
+        });
+      }}
+      onDragEnd={(e) => {
+        const node = e.target;
+        onChange({
+          x: Math.round(node.x() / HALF),
+          y: Math.round(node.y() / HALF),
+        });
+      }}
+    >
+      {door.kind === "hinged" ? (
+        <HingedDoorGlyph w={W} h={H} swing={door.swing ?? "left"} />
+      ) : door.kind === "sliding" ? (
+        <SlidingDoorGlyph w={W} h={H} />
+      ) : (
+        <FoldingDoorGlyph w={W} h={H} />
+      )}
+      {selected && (
+        <Rect
+          width={W}
+          height={H}
+          stroke={CLAY}
+          strokeWidth={2}
+          dash={[4, 4]}
+          listening={false}
+        />
+      )}
+    </Group>
+  );
+}
+
+function HingedDoorGlyph({
+  w,
+  h,
+  swing,
+}: {
+  w: number;
+  h: number;
+  swing: "left" | "right";
+}) {
+  // 開口部 (opening) を白く塗って壁を切る + 開き軌跡の1/4円 + 扉のライン
+  const hingeX = swing === "left" ? 0 : w;
+  return (
+    <>
+      <Rect width={w} height={h} fill={PAPER} stroke={WALL} strokeWidth={1} />
+      <Arc
+        x={hingeX}
+        y={h}
+        innerRadius={0}
+        outerRadius={Math.min(w, h * 2)}
+        angle={90}
+        rotation={swing === "left" ? -90 : -180}
+        stroke="#2c2722"
+        strokeWidth={1}
+      />
+      <Line
+        points={
+          swing === "left"
+            ? [0, h, 0, h - Math.min(w, h * 2)]
+            : [w, h, w, h - Math.min(w, h * 2)]
+        }
+        stroke="#2c2722"
+        strokeWidth={2}
+      />
+    </>
+  );
+}
+
+function SlidingDoorGlyph({ w, h }: { w: number; h: number }) {
+  return (
+    <>
+      <Rect width={w} height={h} fill={PAPER} stroke={WALL} strokeWidth={1} />
+      <Line points={[0, h / 2, w, h / 2]} stroke={WALL} dash={[3, 3]} strokeWidth={1} />
+      <Arrow
+        points={[w * 0.3, h * 0.25, w * 0.7, h * 0.25]}
+        stroke="#2c2722"
+        fill="#2c2722"
+        strokeWidth={1}
+        pointerLength={4}
+        pointerWidth={4}
+      />
+      <Arrow
+        points={[w * 0.7, h * 0.75, w * 0.3, h * 0.75]}
+        stroke="#2c2722"
+        fill="#2c2722"
+        strokeWidth={1}
+        pointerLength={4}
+        pointerWidth={4}
+      />
+    </>
+  );
+}
+
+function FoldingDoorGlyph({ w, h }: { w: number; h: number }) {
+  return (
+    <>
+      <Rect width={w} height={h} fill={PAPER} stroke={WALL} strokeWidth={1} />
+      <Line
+        points={[0, h, w / 2, 0, w, h]}
+        stroke="#2c2722"
+        strokeWidth={1.5}
+      />
+    </>
+  );
+}
+
+// =========================================================
+// 窓
+// =========================================================
+function WindowNode({
+  win,
+  selected,
+  onSelect,
+  onChange,
+}: {
+  win: WindowShape;
+  selected: boolean;
+  onSelect: () => void;
+  onChange: (patch: Partial<WindowShape>) => void;
+}) {
+  const W = win.w * CELL_PX;
+  const H = win.h * CELL_PX;
+
+  return (
+    <Group
+      x={win.x * HALF}
+      y={win.y * HALF}
+      rotation={win.rot}
+      offsetX={W / 2}
+      offsetY={H / 2}
+      draggable
+      onClick={(e) => {
+        e.cancelBubble = true;
+        onSelect();
+      }}
+      onTap={(e) => {
+        e.cancelBubble = true;
+        onSelect();
+      }}
+      onDragMove={(e) => {
+        const node = e.target;
+        node.position({
+          x: snapToHalf(node.x()),
+          y: snapToHalf(node.y()),
+        });
+      }}
+      onDragEnd={(e) => {
+        const node = e.target;
+        onChange({
+          x: Math.round(node.x() / HALF),
+          y: Math.round(node.y() / HALF),
+        });
+      }}
+    >
+      <Rect width={W} height={H} fill={PAPER} stroke={WALL} strokeWidth={1} />
+      <Line points={[0, H / 2, W, H / 2]} stroke={WALL} strokeWidth={1} />
+      {selected && (
+        <Rect
+          width={W}
+          height={H}
+          stroke={CLAY}
+          strokeWidth={2}
+          dash={[4, 4]}
+          listening={false}
+        />
+      )}
+    </Group>
+  );
+}
+
+// =========================================================
+// 設備スタンプ
+// =========================================================
+function FixtureNode({
+  fx,
+  selected,
+  onSelect,
+  onChange,
+}: {
+  fx: FixtureShape;
+  selected: boolean;
+  onSelect: () => void;
+  onChange: (patch: Partial<FixtureShape>) => void;
+}) {
+  const W = fx.w * CELL_PX;
+  const H = fx.h * CELL_PX;
+  const meta = FIXTURE_META[fx.kind] ?? {
+    label: fx.kind,
+    fill: "#f3eadc",
+    icon: "▦",
+  };
+
+  return (
+    <Group
+      x={fx.x * HALF}
+      y={fx.y * HALF}
+      rotation={fx.rot}
+      offsetX={W / 2}
+      offsetY={H / 2}
+      draggable
+      onClick={(e) => {
+        e.cancelBubble = true;
+        onSelect();
+      }}
+      onTap={(e) => {
+        e.cancelBubble = true;
+        onSelect();
+      }}
+      onDragMove={(e) => {
+        const node = e.target;
+        node.position({
+          x: snapToHalf(node.x()),
+          y: snapToHalf(node.y()),
+        });
+      }}
+      onDragEnd={(e) => {
+        const node = e.target;
+        onChange({
+          x: Math.round(node.x() / HALF),
+          y: Math.round(node.y() / HALF),
+        });
+      }}
+    >
+      <Rect
+        width={W}
+        height={H}
+        fill={meta.fill}
+        stroke="#8a7e6b"
+        strokeWidth={1}
+        cornerRadius={fx.kind === "bath" ? 8 : 2}
+      />
+      {/* キッチンの簡易シンク・コンロ */}
+      {fx.kind === "kitchen-i" && (
+        <>
+          <Rect
+            x={W * 0.1}
+            y={H * 0.2}
+            width={W * 0.3}
+            height={H * 0.6}
+            fill="#fff"
+            stroke="#8a7e6b"
+            strokeWidth={1}
+            cornerRadius={2}
+          />
+          <Line
+            points={[W * 0.7, H * 0.3, W * 0.7, H * 0.7]}
+            stroke="#8a7e6b"
+            strokeWidth={1}
+          />
+        </>
+      )}
+      {/* トイレの便座 */}
+      {fx.kind === "toilet" && (
+        <Rect
+          x={W * 0.2}
+          y={H * 0.35}
+          width={W * 0.6}
+          height={H * 0.5}
+          fill="#fff"
+          stroke="#8a7e6b"
+          cornerRadius={W * 0.3}
+        />
+      )}
+      {/* 階段のステップライン */}
+      {fx.kind === "stairs" &&
+        Array.from({ length: Math.max(3, Math.floor(H / 8)) }).map((_, i, arr) => (
+          <Line
+            key={i}
+            points={[0, ((i + 1) / arr.length) * H, W, ((i + 1) / arr.length) * H]}
+            stroke="#8a7e6b"
+            strokeWidth={0.5}
+          />
+        ))}
+      <Text
+        width={W}
+        height={H}
+        text={`${meta.icon}\n${meta.label}`}
+        align="center"
+        verticalAlign="middle"
+        fontFamily="sans-serif"
+        fontSize={10}
+        fill="#5d5247"
+        listening={false}
+      />
+      {selected && (
+        <Rect
+          width={W}
+          height={H}
+          stroke={CLAY}
+          strokeWidth={2}
+          dash={[4, 4]}
+          listening={false}
+        />
+      )}
+    </Group>
+  );
+}
+
+const FIXTURE_META: Record<
+  string,
+  { label: string; fill: string; icon: string }
+> = {
+  "kitchen-i": { label: "キッチン", fill: "#fdf3e2", icon: "🍳" },
+  "kitchen-l": { label: "L型キッチン", fill: "#fdf3e2", icon: "🍳" },
+  "kitchen-island": { label: "アイランド", fill: "#fdf3e2", icon: "🍳" },
+  bath: { label: "浴槽", fill: "#e2eef5", icon: "🛁" },
+  washbasin: { label: "洗面", fill: "#eaf1f6", icon: "🚰" },
+  toilet: { label: "トイレ", fill: "#f1ece4", icon: "🚽" },
+  stairs: { label: "階段", fill: "#efe7d6", icon: "🪜" },
+  closet: { label: "収納", fill: "#f0e9da", icon: "🗄" },
+  entrance: { label: "玄関土間", fill: "#e9dfc8", icon: "👞" },
+};
+
 function snapToCell(v: number) {
   return Math.round(v / CELL_PX) * CELL_PX;
+}
+
+function snapToHalf(v: number) {
+  return Math.round(v / HALF) * HALF;
 }

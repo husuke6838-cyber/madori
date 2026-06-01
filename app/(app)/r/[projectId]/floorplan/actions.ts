@@ -150,6 +150,46 @@ export async function saveFloorplanDataAction(
     .eq("id", floorplanId);
 }
 
+/**
+ * PNG 書き出し: クライアントで生成した dataURL を受け取って Storage に保存。
+ * - item-images バケットを再利用（migration の RLS と整合する {projectId}/... 命名）
+ * - 命名規約: `{projectId}/floorplans/{floorplanId}.png`
+ * - 計画書ビュー・共有ビューはこの path から署名URL を生成して表示する
+ */
+export async function exportFloorplanPngAction(
+  projectId: string,
+  floorplanId: string,
+  dataUrl: string
+) {
+  if (!projectId || !floorplanId || !dataUrl) return;
+  if (!dataUrl.startsWith("data:image/png;base64,")) {
+    throw new Error("PNGの形式ではありません");
+  }
+  const { admin } = await requireProjectMember(projectId);
+
+  const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
+  const buf = Buffer.from(base64, "base64");
+  // 10MB 上限
+  if (buf.byteLength > 10 * 1024 * 1024) {
+    throw new Error("PNG が大きすぎます（10MB上限）");
+  }
+
+  const path = `${projectId}/floorplans/${floorplanId}.png`;
+  const up = await admin.storage
+    .from("item-images")
+    .upload(path, buf, { contentType: "image/png", upsert: true });
+  if (up.error) {
+    throw new Error("PNG 保存に失敗: " + up.error.message);
+  }
+
+  await admin
+    .from("floorplans")
+    .update({ png_path: path, updated_at: new Date().toISOString() })
+    .eq("id", floorplanId);
+
+  revalidatePath(`/r/${projectId}/plan`);
+}
+
 function nextDefaultName() {
   // クライアント側で適切な名前を渡してくれることが多いのでフォールバックのみ
   return "新しい間取り";

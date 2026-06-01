@@ -16,6 +16,11 @@ export type PlanRoom = {
   no_request: boolean;
   items: PlanItem[];
 };
+export type PlanFloorplan = {
+  id: string;
+  name: string;
+  pngUrl: string | null;
+};
 
 /**
  * 計画書ドキュメントの表示（読み取り専用）。
@@ -27,11 +32,13 @@ export function PlanDocument({
   projectName,
   members,
   rooms,
+  floorplans = [],
   generatedAt,
 }: {
   projectName: string;
   members: PlanMember[];
   rooms: PlanRoom[];
+  floorplans?: PlanFloorplan[];
   generatedAt: Date;
 }) {
   const dateStr = generatedAt.toLocaleDateString("ja-JP");
@@ -132,6 +139,34 @@ export function PlanDocument({
           </section>
         );
       })}
+
+      {floorplans.some((f) => f.pngUrl) && (
+        <section className="mt-6 break-inside-avoid">
+          <h2 className="font-mincho text-[15.5px] border-l-4 border-clay pl-2.5 mb-3">
+            間取り
+          </h2>
+          <div className="grid grid-cols-1 gap-4">
+            {floorplans
+              .filter((f) => f.pngUrl)
+              .map((f) => (
+                <figure
+                  key={f.id}
+                  className="text-center break-inside-avoid"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={f.pngUrl!}
+                    alt={`間取り ${f.name}`}
+                    className="w-full max-w-[480px] mx-auto border border-line rounded-md"
+                  />
+                  <figcaption className="text-[11px] text-ink-soft mt-1">
+                    {f.name}
+                  </figcaption>
+                </figure>
+              ))}
+          </div>
+        </section>
+      )}
 
       <footer className="mt-8 text-[10px] text-ink-faint leading-relaxed border-t border-line pt-3 print:mt-6">
         <p>※ {DISCLAIMER_PLAN}</p>

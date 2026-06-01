@@ -1,6 +1,11 @@
 import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import type { PlanMember, PlanRoom, PlanItem } from "@/components/PlanDocument";
+import type {
+  PlanMember,
+  PlanRoom,
+  PlanItem,
+  PlanFloorplan,
+} from "@/components/PlanDocument";
 
 /**
  * 計画書ドキュメントに必要なデータ一式をまとめて取得する。
@@ -12,10 +17,11 @@ export async function loadPlanData(projectId: string): Promise<{
   projectName: string;
   members: PlanMember[];
   rooms: PlanRoom[];
+  floorplans: PlanFloorplan[];
 } | null> {
   const admin = createSupabaseAdminClient();
 
-  const [projectRes, membersRes, roomsRes] = await Promise.all([
+  const [projectRes, membersRes, roomsRes, floorplansRes] = await Promise.all([
     admin.from("projects").select("id, name").eq("id", projectId).maybeSingle(),
     admin
       .from("project_members")
@@ -33,6 +39,11 @@ export async function loadPlanData(projectId: string): Promise<{
            item_links ( url, og_title, sort_order )
          )`
       )
+      .eq("project_id", projectId)
+      .order("sort_order"),
+    admin
+      .from("floorplans")
+      .select("id, name, png_path, sort_order")
       .eq("project_id", projectId)
       .order("sort_order"),
   ]);
@@ -62,18 +73,36 @@ export async function loadPlanData(projectId: string): Promise<{
     }[];
   };
   const roomsData = (roomsRes.data ?? []) as unknown as RoomRow[];
-  const allPaths = roomsData.flatMap((r) =>
-    r.items.flatMap((i) => i.item_images.map((im) => im.storage_path))
-  );
+  const floorplansData = (floorplansRes.data ?? []) as unknown as Array<{
+    id: string;
+    name: string;
+    png_path: string | null;
+    sort_order: number;
+  }>;
+
+  const allPaths = [
+    ...roomsData.flatMap((r) =>
+      r.items.flatMap((i) => i.item_images.map((im) => im.storage_path))
+    ),
+    ...floorplansData
+      .map((f) => f.png_path)
+      .filter((p): p is string => !!p),
+  ];
   const signedUrlByPath: Record<string, string> = {};
   if (allPaths.length > 0) {
     const { data: signed } = await admin.storage
       .from("item-images")
-      .createSignedUrls(allPaths, 60 * 60 * 24); // 24h（印刷時に切れにくいよう少し長め）
+      .createSignedUrls(allPaths, 60 * 60 * 24); // 24h
     for (const s of signed ?? []) {
       if (s.path && s.signedUrl) signedUrlByPath[s.path] = s.signedUrl;
     }
   }
+
+  const floorplans: PlanFloorplan[] = floorplansData.map((f) => ({
+    id: f.id,
+    name: f.name,
+    pngUrl: f.png_path ? signedUrlByPath[f.png_path] ?? null : null,
+  }));
 
   const rooms: PlanRoom[] = roomsData.map((r) => ({
     id: r.id,
@@ -101,5 +130,6 @@ export async function loadPlanData(projectId: string): Promise<{
     projectName: projectRes.data.name,
     members,
     rooms,
+    floorplans,
   };
 }

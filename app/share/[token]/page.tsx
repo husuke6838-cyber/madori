@@ -41,6 +41,7 @@ export default async function SharedPlan({
         projectName={data.projectName}
         members={data.members}
         rooms={data.rooms}
+        floorplans={data.floorplans}
         generatedAt={new Date()}
       />
       <div className="px-5 pb-10 print:hidden">
