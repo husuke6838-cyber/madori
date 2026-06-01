@@ -1,19 +1,44 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { createSupabaseServerClient } from "./supabase/server";
 import { createSupabaseAdminClient } from "./supabase/admin";
+
+/**
+ * 同一リクエスト内で getUser() を 1 回にまとめる。
+ * layout と page の両方で requireUser を呼んでも、Supabase Auth への
+ * ネットワーク呼び出しは 1 回だけになる。
+ */
+const _getAuth = cache(async () => {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return { supabase, user };
+});
 
 /**
  * 認証必須ページの先頭で呼ぶ。
  * 未ログインなら /login へリダイレクトする。
  */
 export async function requireUser() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await _getAuth();
   if (!user) redirect("/login");
   return { supabase, user };
 }
+
+/**
+ * 同一リクエスト内でプロジェクト基本情報を1回だけ引く。
+ * layout / page どちらから呼んでも DB 往復は1回。
+ */
+export const getProjectBasic = cache(async (projectId: string) => {
+  const admin = createSupabaseAdminClient();
+  const { data } = await admin
+    .from("projects")
+    .select("id, name, owner_id")
+    .eq("id", projectId)
+    .maybeSingle();
+  return data;
+});
 
 /**
  * 指定プロジェクトのメンバーであることを保証する。

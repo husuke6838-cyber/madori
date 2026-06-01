@@ -8,15 +8,9 @@ import {
   revokeInviteAction,
 } from "./invite-actions";
 
-export function InviteButton({
-  projectId,
-  initialToken,
-}: {
-  projectId: string;
-  initialToken: string | null;
-}) {
+export function InviteButton({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
-  const [token, setToken] = useState(initialToken);
+  const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -27,6 +21,7 @@ export function InviteButton({
   const handleOpen = () => {
     setOpen(true);
     if (!token) {
+      // 既存リンク取得 or 新規発行（ensure はどちらも処理する）
       startTransition(async () => {
         const t = await ensureInviteTokenAction(projectId);
         setToken(t);

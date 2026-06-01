@@ -42,25 +42,51 @@ export default async function NoteTab({
 
   const admin = createSupabaseAdminClient();
 
-  const [projectRes, membersRes, roomsRes] = await Promise.all([
-    admin.from("projects").select("id, name").eq("id", projectId).single(),
-    admin
-      .from("project_members")
-      .select("id, name, color")
-      .eq("project_id", projectId)
-      .order("sort_order"),
-    admin
-      .from("rooms")
-      .select("id, name, subtitle, kind, desired_jou, no_request, sort_order")
-      .eq("project_id", projectId)
-      .order("sort_order"),
-  ]);
+  // project + members + rooms を 1 クエリで取得（PostgREST nested embed）
+  const { data: project } = await admin
+    .from("projects")
+    .select(
+      `id, name,
+       project_members ( id, name, color, sort_order ),
+       rooms ( id, name, subtitle, kind, desired_jou, no_request, sort_order )`
+    )
+    .eq("id", projectId)
+    .single();
 
-  const project = projectRes.data;
-  const members = membersRes.data ?? [];
-  const rooms = roomsRes.data ?? [];
+  if (!project) {
+    return (
+      <main className="px-5 py-10 text-center text-ink-soft">
+        ルームが見つかりません
+      </main>
+    );
+  }
 
-  if (!project || rooms.length === 0) {
+  const members = (
+    (project.project_members ?? []) as Array<{
+      id: string;
+      name: string;
+      color: string;
+      sort_order: number;
+    }>
+  )
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  const rooms = (
+    (project.rooms ?? []) as Array<{
+      id: string;
+      name: string;
+      subtitle: string | null;
+      kind: string;
+      desired_jou: number | null;
+      no_request: boolean;
+      sort_order: number;
+    }>
+  )
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  if (rooms.length === 0) {
     return (
       <main className="px-5 py-10 text-center text-ink-soft">
         ルームを準備中です…
@@ -70,29 +96,29 @@ export default async function NoteTab({
 
   const currentRoom = rooms.find((r) => r.id === roomQuery) ?? rooms[0];
 
-  const { data: itemCountRows } = await admin
-    .from("items")
-    .select("room_id")
-    .in(
-      "room_id",
-      rooms.map((r) => r.id)
-    );
+  // items 一覧と件数取得は並列化
+  const [{ data: items }, { data: itemCountRows }] = await Promise.all([
+    admin
+      .from("items")
+      .select(
+        `id, text, memo, spec_model, sort_order,
+         ratings ( member_id, stars ),
+         item_revisions ( prev_text, changed_at ),
+         item_images ( id, storage_path, sort_order ),
+         item_links ( id, url, og_title, og_image, og_desc, sort_order )`
+      )
+      .eq("room_id", currentRoom.id)
+      .order("sort_order"),
+    admin
+      .from("items")
+      .select("room_id")
+      .in("room_id", rooms.map((r) => r.id)),
+  ]);
+
   const itemCounts: Record<string, number> = {};
   for (const row of itemCountRows ?? []) {
     itemCounts[row.room_id] = (itemCounts[row.room_id] ?? 0) + 1;
   }
-
-  const { data: items } = await admin
-    .from("items")
-    .select(
-      `id, text, memo, spec_model, sort_order,
-       ratings ( member_id, stars ),
-       item_revisions ( prev_text, changed_at ),
-       item_images ( id, storage_path, sort_order ),
-       item_links ( id, url, og_title, og_image, og_desc, sort_order )`
-    )
-    .eq("room_id", currentRoom.id)
-    .order("sort_order");
 
   const itemList = (items ?? []) as unknown as ItemRow[];
 
