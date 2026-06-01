@@ -82,9 +82,12 @@ const FloorplanCanvas = forwardRef<
 
   /**
    * キャンバス上でのズームジェスチャ。
-   * - 2本指ピンチ: 距離比でスケール
-   * - Ctrl/⌘+ホイール（macOSトラックパッドのピンチもこれ）: deltaY でスケール
-   * 普通のホイールスクロールはそのままパン操作として通す。
+   *
+   * 設計:
+   * - ピンチ/Ctrl+ホイール中は Konva の stage を ref 経由で直接更新する
+   *   （React state を経由しない → 全コンポーネント再レンダを回避）
+   * - 操作終了時にのみ onZoomChange を呼んで親の state と同期
+   * - ピンチ中心点が指の下に留まるよう scrollLeft/Top を補正
    */
   useEffect(() => {
     const el = containerRef.current;
@@ -93,38 +96,118 @@ const FloorplanCanvas = forwardRef<
     const clamp = (z: number) =>
       Math.max(0.3, Math.min(2, Math.round(z * 100) / 100));
 
-    let pinchStart: { dist: number; zoom: number } | null = null;
+    type PinchStart = {
+      dist: number;
+      zoom: number;
+      contentX: number; // ピンチ中心の「コンテンツ座標」(zoom前)
+      contentY: number;
+      clientCx: number; // ピンチ中心の「画面座標」（ビューポート内オフセット）
+      clientCy: number;
+    };
+    let pinchStart: PinchStart | null = null;
+    let pinchLatest: number | null = null;
 
     const distOf = (t1: Touch, t2: Touch) =>
       Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
 
+    // 「画面座標 → コンテンツ座標」変換
+    // コンテンツ座標 = (画面のビューポート内位置 + scroll) / 現在の zoom
+    const screenToContent = (clientX: number, clientY: number, zoom: number) => {
+      const r = el.getBoundingClientRect();
+      const vpX = clientX - r.left;
+      const vpY = clientY - r.top;
+      return {
+        x: (vpX + el.scrollLeft) / zoom,
+        y: (vpY + el.scrollTop) / zoom,
+        vpX,
+        vpY,
+      };
+    };
+
+    // Konva stage に新 zoom を反映 + スクロール補正で中心を維持
+    const applyZoom = (newZoom: number, anchor: PinchStart) => {
+      const stage = stageRef.current;
+      if (!stage) return;
+      stage.scale({ x: newZoom, y: newZoom });
+      stage.width(STAGE_W * newZoom);
+      stage.height(STAGE_H * newZoom);
+      stage.batchDraw();
+      // anchor.contentX が画面上 anchor.clientCx に来るよう scroll を調整
+      el.scrollLeft = anchor.contentX * newZoom - anchor.clientCx;
+      el.scrollTop = anchor.contentY * newZoom - anchor.clientCy;
+      pinchLatest = newZoom;
+    };
+
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 2) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const cx = (t1.clientX + t2.clientX) / 2;
+        const cy = (t1.clientY + t2.clientY) / 2;
+        const z = zoomRef.current;
+        const { x, y, vpX, vpY } = screenToContent(cx, cy, z);
         pinchStart = {
-          dist: distOf(e.touches[0], e.touches[1]),
-          zoom: zoomRef.current,
+          dist: distOf(t1, t2),
+          zoom: z,
+          contentX: x,
+          contentY: y,
+          clientCx: vpX,
+          clientCy: vpY,
         };
       }
     };
     const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length === 2 && pinchStart) {
         e.preventDefault();
-        const ratio =
-          distOf(e.touches[0], e.touches[1]) / pinchStart.dist;
-        onZoomChange(clamp(pinchStart.zoom * ratio));
+        const newZoom = clamp(
+          (distOf(e.touches[0], e.touches[1]) / pinchStart.dist) *
+            pinchStart.zoom
+        );
+        applyZoom(newZoom, pinchStart);
       }
     };
     const onTouchEnd = () => {
+      if (pinchLatest != null) {
+        onZoomChange(pinchLatest);
+        pinchLatest = null;
+      }
       pinchStart = null;
     };
 
+    // wheel は単発寄りなので毎回 onZoomChange を呼ぶが、
+    // 直近 80ms 連続イベントは direct manipulation で繋ぐ
+    let wheelTimer: ReturnType<typeof setTimeout> | null = null;
+    let wheelAnchor: PinchStart | null = null;
+    let wheelLatest: number | null = null;
     const onWheel = (e: WheelEvent) => {
-      // 普通のスクロールはそのまま通す。Ctrl/⌘ 押下時のみズーム。
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        const delta = -e.deltaY * 0.005;
-        onZoomChange(clamp(zoomRef.current + delta));
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+
+      const z = wheelLatest ?? zoomRef.current;
+      const delta = -e.deltaY * 0.005;
+      const newZoom = clamp(z + delta);
+
+      if (!wheelAnchor) {
+        const { x, y, vpX, vpY } = screenToContent(e.clientX, e.clientY, z);
+        wheelAnchor = {
+          dist: 0,
+          zoom: z,
+          contentX: x,
+          contentY: y,
+          clientCx: vpX,
+          clientCy: vpY,
+        };
       }
+      applyZoom(newZoom, wheelAnchor);
+      wheelLatest = newZoom;
+
+      if (wheelTimer) clearTimeout(wheelTimer);
+      wheelTimer = setTimeout(() => {
+        if (wheelLatest != null) onZoomChange(wheelLatest);
+        wheelLatest = null;
+        wheelAnchor = null;
+        wheelTimer = null;
+      }, 120);
     };
 
     el.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -139,6 +222,7 @@ const FloorplanCanvas = forwardRef<
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchEnd);
       el.removeEventListener("wheel", onWheel);
+      if (wheelTimer) clearTimeout(wheelTimer);
     };
   }, [onZoomChange]);
 
