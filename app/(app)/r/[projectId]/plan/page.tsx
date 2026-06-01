@@ -1,13 +1,57 @@
-export default function PlanTab() {
+import { requireUser } from "@/lib/auth";
+import { loadPlanData } from "@/lib/plan";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { PlanDocument } from "@/components/PlanDocument";
+import { PlanToolbar } from "./PlanToolbar";
+import { AffiliateNudge } from "@/components/AffiliateNudge";
+
+export default async function PlanTab({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}) {
+  const { projectId } = await params;
+  await requireUser();
+
+  const data = await loadPlanData(projectId);
+  if (!data) {
+    return (
+      <main className="px-5 py-10 text-center text-ink-soft">
+        計画書を準備中です…
+      </main>
+    );
+  }
+
+  // 既存の有効な共有リンク（あれば）を取得
+  const admin = createSupabaseAdminClient();
+  const { data: link } = await admin
+    .from("share_links")
+    .select("token")
+    .eq("project_id", projectId)
+    .is("revoked_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const shareUrl = link?.token ? `${baseUrl}/share/${link.token}` : null;
+
   return (
-    <main className="px-5 py-5">
-      <div className="font-mincho text-2xl mb-1">計画書</div>
-      <p className="text-xs text-ink-soft mb-6">
-        ノートで書きためた要望を、工務店に渡せる形に整える
-      </p>
-      <div className="text-center text-xs text-ink-faint border border-dashed border-line bg-surface-2 rounded-[var(--radius-card)] px-5 py-8">
-        Phase 1 ⑥ で実装
+    <>
+      <PlanToolbar
+        projectId={projectId}
+        projectName={data.projectName}
+        initialShareUrl={shareUrl}
+      />
+      <PlanDocument
+        projectName={data.projectName}
+        members={data.members}
+        rooms={data.rooms}
+        generatedAt={new Date()}
+      />
+      <div className="px-5 pb-8 print:hidden">
+        <AffiliateNudge />
       </div>
-    </main>
+    </>
   );
 }

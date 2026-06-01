@@ -4,7 +4,7 @@ import { ROOM_TEMPLATES } from "@/lib/seeds";
 import { FamilyChips } from "./FamilyChips";
 import { RoomTabs } from "./RoomTabs";
 import { RegretCard } from "./RegretCard";
-import { ItemCard } from "./ItemCard";
+import { ItemCard, type ItemForCard } from "./ItemCard";
 import { AddItemFAB } from "./AddItemFAB";
 import { HintChips } from "./HintChips";
 import { NoRequestCheck } from "./NoRequestCheck";
@@ -17,6 +17,15 @@ type ItemRow = {
   sort_order: number;
   ratings: { member_id: string; stars: number }[];
   item_revisions: { prev_text: string; changed_at: string }[];
+  item_images: { id: string; storage_path: string; sort_order: number }[];
+  item_links: {
+    id: string;
+    url: string;
+    og_title: string | null;
+    og_image: string | null;
+    og_desc: string | null;
+    sort_order: number;
+  }[];
 };
 
 export default async function NoteTab({
@@ -30,8 +39,6 @@ export default async function NoteTab({
   const { room: roomQuery, sort } = await searchParams;
   await requireUser();
 
-  // 読み取りは admin（user-scoped client での RLS 経路の差異を回避）。
-  // メンバーシップは layout で既にチェック済みなのでここでは省略可。
   const admin = createSupabaseAdminClient();
 
   const [projectRes, membersRes, roomsRes] = await Promise.all([
@@ -60,10 +67,8 @@ export default async function NoteTab({
     );
   }
 
-  const currentRoom =
-    rooms.find((r) => r.id === roomQuery) ?? rooms[0];
+  const currentRoom = rooms.find((r) => r.id === roomQuery) ?? rooms[0];
 
-  // 各部屋の要望件数（タブのインジケータ用）
   const { data: itemCountRows } = await admin
     .from("items")
     .select("room_id")
@@ -76,27 +81,70 @@ export default async function NoteTab({
     itemCounts[row.room_id] = (itemCounts[row.room_id] ?? 0) + 1;
   }
 
-  // 現在の部屋の要望（並び順 or ★順）
   const { data: items } = await admin
     .from("items")
     .select(
       `id, text, memo, sort_order,
        ratings ( member_id, stars ),
-       item_revisions ( prev_text, changed_at )`
+       item_revisions ( prev_text, changed_at ),
+       item_images ( id, storage_path, sort_order ),
+       item_links ( id, url, og_title, og_image, og_desc, sort_order )`
     )
     .eq("room_id", currentRoom.id)
     .order("sort_order");
 
   const itemList = (items ?? []) as unknown as ItemRow[];
 
+  // 画像の署名URL一括発行（1時間）
+  const allImagePaths = itemList.flatMap((it) =>
+    it.item_images.map((im) => im.storage_path)
+  );
+  const signedUrlByPath: Record<string, string> = {};
+  if (allImagePaths.length > 0) {
+    const { data: signed } = await admin.storage
+      .from("item-images")
+      .createSignedUrls(allImagePaths, 60 * 60);
+    for (const s of signed ?? []) {
+      if (s.path && s.signedUrl) signedUrlByPath[s.path] = s.signedUrl;
+    }
+  }
+
+  const itemCards: ItemForCard[] = itemList.map((it) => ({
+    id: it.id,
+    text: it.text,
+    memo: it.memo,
+    ratings: it.ratings ?? [],
+    prevTexts: (it.item_revisions ?? [])
+      .sort(
+        (a, b) =>
+          new Date(a.changed_at).getTime() - new Date(b.changed_at).getTime()
+      )
+      .map((r) => r.prev_text),
+    images: (it.item_images ?? [])
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((im) => ({
+        id: im.id,
+        signedUrl: signedUrlByPath[im.storage_path] ?? null,
+      })),
+    links: (it.item_links ?? [])
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((l) => ({
+        id: l.id,
+        url: l.url,
+        og_title: l.og_title,
+        og_image: l.og_image,
+        og_desc: l.og_desc,
+      })),
+  }));
+
   const sortByStars = sort === "stars";
   const sortedItems = sortByStars
-    ? [...itemList].sort(
+    ? [...itemCards].sort(
         (a, b) =>
           b.ratings.reduce((s, r) => s + r.stars, 0) -
           a.ratings.reduce((s, r) => s + r.stars, 0)
       )
-    : itemList;
+    : itemCards;
 
   const template = ROOM_TEMPLATES.find((t) => t.name === currentRoom.name);
   const hints = template?.hints ?? [];
@@ -142,23 +190,7 @@ export default async function NoteTab({
         )}
 
         {sortedItems.map((it) => (
-          <ItemCard
-            key={it.id}
-            item={{
-              id: it.id,
-              text: it.text,
-              memo: it.memo,
-              ratings: it.ratings ?? [],
-              prevTexts: (it.item_revisions ?? [])
-                .sort(
-                  (a, b) =>
-                    new Date(a.changed_at).getTime() -
-                    new Date(b.changed_at).getTime()
-                )
-                .map((r) => r.prev_text),
-            }}
-            members={members}
-          />
+          <ItemCard key={it.id} item={it} members={members} />
         ))}
       </div>
 

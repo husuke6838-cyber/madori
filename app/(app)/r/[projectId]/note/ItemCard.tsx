@@ -1,28 +1,45 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { cn } from "@/lib/ui";
+import { Button } from "@/components/ui/Button";
 import {
   deleteItemAction,
   setRatingAction,
+  updateItemTextAction,
+  updateItemMemoAction,
 } from "./actions";
+import { ItemAttachments } from "./ItemAttachments";
 
 type Member = { id: string; name: string; color: string };
 type Rating = { member_id: string; stars: number };
+
+export type ItemForCard = {
+  id: string;
+  text: string;
+  memo: string | null;
+  ratings: Rating[];
+  prevTexts: string[];
+  images: { id: string; signedUrl: string | null }[];
+  links: {
+    id: string;
+    url: string;
+    og_title: string | null;
+    og_image: string | null;
+    og_desc: string | null;
+  }[];
+};
 
 export function ItemCard({
   item,
   members,
 }: {
-  item: {
-    id: string;
-    text: string;
-    memo: string | null;
-    ratings: Rating[];
-    prevTexts: string[];
-  };
+  item: ItemForCard;
   members: Member[];
 }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(item.text);
+  const [memo, setMemo] = useState(item.memo ?? "");
   const [pending, startTransition] = useTransition();
 
   const total = item.ratings.reduce((s, r) => s + r.stars, 0);
@@ -35,7 +52,6 @@ export function ItemCard({
 
   const setStar = (memberId: string, stars: number) => {
     const current = ratingByMember[memberId] ?? 0;
-    // 同じ値をタップで -1 トグル
     const next = current === stars ? stars - 1 : stars;
     const fd = new FormData();
     fd.set("itemId", item.id);
@@ -53,6 +69,26 @@ export function ItemCard({
     startTransition(async () => {
       await deleteItemAction(fd);
     });
+  };
+
+  const handleSave = () => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const fd = new FormData();
+    fd.set("itemId", item.id);
+    fd.set("text", trimmed);
+    fd.set("memo", memo.trim());
+    startTransition(async () => {
+      await updateItemTextAction(fd);
+      await updateItemMemoAction(fd);
+      setEditing(false);
+    });
+  };
+
+  const handleCancel = () => {
+    setText(item.text);
+    setMemo(item.memo ?? "");
+    setEditing(false);
   };
 
   return (
@@ -76,25 +112,65 @@ export function ItemCard({
         </>
       )}
 
-      <div className="flex items-start gap-2">
-        <div className="text-[15px] font-medium leading-snug flex-1">
-          {item.text}
-          {item.prevTexts.length > 0 && (
-            <span className="ml-1.5 inline-block text-[9.5px] font-bold text-clay bg-clay-soft rounded-[10px] px-1.5 align-middle">
-              変更あり
-            </span>
-          )}
+      {editing ? (
+        <div className="space-y-2">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={2}
+            className="w-full px-3 py-2 text-[15px] bg-surface text-ink rounded-[var(--radius-btn)] border border-line resize-none focus:outline-none focus:border-clay focus:ring-2 focus:ring-clay-soft"
+          />
+          <textarea
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            rows={2}
+            placeholder="メモ（任意）：補足や検討中のことなど"
+            className="w-full px-3 py-2 text-[13px] text-ink-soft bg-surface-2 rounded-[var(--radius-btn)] border border-line resize-none focus:outline-none focus:border-clay focus:ring-1 focus:ring-clay-soft"
+          />
+          <div className="flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={pending}
+              className="text-xs text-ink-soft px-3 py-2 tap-44"
+            >
+              キャンセル
+            </button>
+            <Button
+              type="button"
+              size="md"
+              onClick={handleSave}
+              disabled={pending || !text.trim()}
+            >
+              {pending ? "保存中..." : "保存"}
+            </Button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={pending}
-          aria-label="この要望を削除"
-          className="text-ink-faint hover:text-clay px-2 py-1 -mr-2 -mt-1 text-sm"
-        >
-          ×
-        </button>
-      </div>
+      ) : (
+        <div className="flex items-start gap-2">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="text-[15px] font-medium leading-snug flex-1 text-left"
+          >
+            {item.text}
+            {item.prevTexts.length > 0 && (
+              <span className="ml-1.5 inline-block text-[9.5px] font-bold text-clay bg-clay-soft rounded-[10px] px-1.5 align-middle">
+                変更あり
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={pending}
+            aria-label="この要望を削除"
+            className="text-ink-faint hover:text-clay px-2 py-1 -mr-2 -mt-1 text-sm"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5 mt-2.5">
         {members.map((m) => {
@@ -121,9 +197,7 @@ export function ItemCard({
                       disabled={pending}
                       aria-label={`${m.name} に ★${n}`}
                       className="text-[20px] leading-none px-0.5 tap-44"
-                      style={{
-                        color: on ? m.color : "#dcd2c2",
-                      }}
+                      style={{ color: on ? m.color : "#dcd2c2" }}
                     >
                       ★
                     </button>
@@ -135,7 +209,13 @@ export function ItemCard({
         })}
       </div>
 
-      {item.memo && (
+      <ItemAttachments
+        itemId={item.id}
+        images={item.images}
+        links={item.links}
+      />
+
+      {!editing && item.memo && (
         <div className="text-[12.5px] text-ink-soft mt-2.5">
           <span className="text-[10px] font-bold tracking-wider text-ink-faint mr-1">
             メモ

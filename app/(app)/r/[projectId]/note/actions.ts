@@ -118,6 +118,169 @@ export async function setRatingAction(formData: FormData) {
 }
 
 /**
+ * 要望のメモを更新（履歴は残さない）。
+ */
+export async function updateItemMemoAction(formData: FormData) {
+  const itemId = String(formData.get("itemId") ?? "");
+  const memo = String(formData.get("memo") ?? "").trim();
+  if (!itemId) return;
+
+  const { admin, roomId } = await requireUser_via_item(itemId);
+
+  await admin
+    .from("items")
+    .update({ memo: memo || null, updated_at: new Date().toISOString() })
+    .eq("id", itemId);
+
+  revalidatePathByRoom(roomId);
+}
+
+/**
+ * 要望に画像をアップロード。
+ * - 1ファイル 5MB 上限、image/* のみ
+ * - 命名規約: `{projectId}/{itemId}/{timestamp}-{filename}`
+ *   migration の Storage RLS と整合
+ */
+export async function addItemImageAction(formData: FormData) {
+  const itemId = String(formData.get("itemId") ?? "");
+  const file = formData.get("file");
+  if (!itemId || !(file instanceof File) || file.size === 0) return;
+  if (file.size > 5 * 1024 * 1024)
+    throw new Error("画像は5MB以下にしてください");
+  if (!file.type.startsWith("image/"))
+    throw new Error("画像ファイルのみアップロードできます");
+
+  const { admin, roomId, projectId } = await requireUser_via_item(itemId);
+
+  const safe = file.name.replace(/[^\w.\-]/g, "_").slice(-60);
+  const path = `${projectId}/${itemId}/${Date.now()}-${safe}`;
+
+  const upload = await admin.storage
+    .from("item-images")
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (upload.error) {
+    throw new Error("アップロード失敗: " + upload.error.message);
+  }
+
+  // 末尾追加
+  const { data: maxRow } = await admin
+    .from("item_images")
+    .select("sort_order")
+    .eq("item_id", itemId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextOrder = (maxRow?.sort_order ?? -1) + 1;
+
+  await admin.from("item_images").insert({
+    item_id: itemId,
+    storage_path: path,
+    sort_order: nextOrder,
+  });
+
+  revalidatePathByRoom(roomId);
+}
+
+/**
+ * 要望から画像を削除（Storage と DB の両方）。
+ */
+export async function deleteItemImageAction(formData: FormData) {
+  const imageId = String(formData.get("imageId") ?? "");
+  if (!imageId) return;
+
+  const { createSupabaseAdminClient } = await import("@/lib/supabase/admin");
+  const admin = createSupabaseAdminClient();
+
+  const { data: image } = await admin
+    .from("item_images")
+    .select("storage_path, item_id, items!inner(room_id, rooms!inner(project_id))")
+    .eq("id", imageId)
+    .maybeSingle();
+  if (!image) return;
+  // @ts-expect-error PostgREST inner join shape
+  const projectId = image.items.rooms.project_id;
+  // @ts-expect-error PostgREST inner join shape
+  const roomId = image.items.room_id;
+  await requireProjectMember(projectId);
+
+  await admin.storage.from("item-images").remove([image.storage_path]);
+  await admin.from("item_images").delete().eq("id", imageId);
+
+  revalidatePathByRoom(roomId);
+}
+
+/**
+ * 要望に参考リンクを追加。OGP は /api/og で事前取得して渡してもらう。
+ */
+export async function addItemLinkAction(formData: FormData) {
+  const itemId = String(formData.get("itemId") ?? "");
+  const url = String(formData.get("url") ?? "").trim();
+  if (!itemId || !url) return;
+  try {
+    new URL(url);
+  } catch {
+    throw new Error("URL の形式が正しくありません");
+  }
+  const ogTitle = (String(formData.get("og_title") ?? "").trim() || null) as
+    | string
+    | null;
+  const ogImage = (String(formData.get("og_image") ?? "").trim() || null) as
+    | string
+    | null;
+  const ogDesc = (String(formData.get("og_desc") ?? "").trim() || null) as
+    | string
+    | null;
+
+  const { admin, roomId } = await requireUser_via_item(itemId);
+
+  const { data: maxRow } = await admin
+    .from("item_links")
+    .select("sort_order")
+    .eq("item_id", itemId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextOrder = (maxRow?.sort_order ?? -1) + 1;
+
+  await admin.from("item_links").insert({
+    item_id: itemId,
+    url,
+    og_title: ogTitle,
+    og_image: ogImage,
+    og_desc: ogDesc,
+    sort_order: nextOrder,
+  });
+
+  revalidatePathByRoom(roomId);
+}
+
+/**
+ * 要望から参考リンクを削除。
+ */
+export async function deleteItemLinkAction(formData: FormData) {
+  const linkId = String(formData.get("linkId") ?? "");
+  if (!linkId) return;
+
+  const { createSupabaseAdminClient } = await import("@/lib/supabase/admin");
+  const admin = createSupabaseAdminClient();
+
+  const { data: link } = await admin
+    .from("item_links")
+    .select("item_id, items!inner(room_id, rooms!inner(project_id))")
+    .eq("id", linkId)
+    .maybeSingle();
+  if (!link) return;
+  // @ts-expect-error PostgREST inner join shape
+  const projectId = link.items.rooms.project_id;
+  // @ts-expect-error PostgREST inner join shape
+  const roomId = link.items.room_id;
+  await requireProjectMember(projectId);
+
+  await admin.from("item_links").delete().eq("id", linkId);
+  revalidatePathByRoom(roomId);
+}
+
+/**
  * 「この場所は特に要望なし（確認済み）」のトグル。
  */
 export async function toggleNoRequestAction(formData: FormData) {
