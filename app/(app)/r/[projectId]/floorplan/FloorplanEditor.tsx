@@ -61,8 +61,17 @@ export function FloorplanEditor({
   const [newName, setNewName] = useState(current.name);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "dirty">("saved");
   const [exporting, setExporting] = useState(false);
+  const [zoom, setZoom] = useState(0.6);
   const [, startTransition] = useTransition();
   const canvasRef = useRef<CanvasHandle>(null);
+
+  const clampZoom = (z: number) => Math.max(0.3, Math.min(2, Math.round(z * 100) / 100));
+  const zoomIn = () => setZoom((z) => clampZoom(z + 0.1));
+  const zoomOut = () => setZoom((z) => clampZoom(z - 0.1));
+  const fitToScreen = () => {
+    const w = canvasRef.current?.getViewportWidth() ?? 0;
+    if (w > 0) setZoom(clampZoom(w / (30 * 26)));
+  };
 
   const scheduleSave = (next: FloorplanData) => {
     setSaveState("dirty");
@@ -308,6 +317,7 @@ export function FloorplanEditor({
             ref={canvasRef}
             data={data}
             selected={selected}
+            zoom={zoom}
             onSelect={setSelected}
             onRoomChange={updateRoom}
             onDoorChange={updateDoor}
@@ -316,6 +326,22 @@ export function FloorplanEditor({
           />
         </div>
         <FloorplanToolSidebar
+          topContent={
+            <SidebarTop
+              zoom={zoom}
+              onZoomIn={zoomIn}
+              onZoomOut={zoomOut}
+              onReset={() => setZoom(1)}
+              onFit={fitToScreen}
+              selected={selected}
+              selectionLabel={selectionLabel}
+              canRotate={!!selected && selected.type !== "room"}
+              canFlip={selected?.type === "door"}
+              onRotate={rotateSelected}
+              onFlip={flipSelected}
+              onDelete={deleteSelected}
+            />
+          }
           sections={[
             {
               id: "room",
@@ -365,45 +391,25 @@ export function FloorplanEditor({
         />
       </div>
 
-      {/* 選択中要素のコントロール（キャンバス下） */}
-      {selected ? (
+      {/* キャンバス下：詳細編集（部屋名・サイズ・窓幅 など）。
+          回転/反転/削除は右サイドバーに移動済み。 */}
+      {selected?.type === "room" && (
         <div className="px-4 py-3 border-t border-line bg-surface-2/60">
-          <div className="flex items-center gap-2 mb-2 text-[12px]">
-            <span className="font-bold">選択中：{selectionLabel}</span>
-            <span className="ml-auto flex gap-1">
-              {selected.type !== "room" && (
-                <button type="button" onClick={rotateSelected}
-                  className="text-[11px] border border-line bg-surface px-2.5 py-1.5 rounded-md tap-44">
-                  ↻ 90°
-                </button>
-              )}
-              {selected.type === "door" && (
-                <button type="button" onClick={flipSelected}
-                  className="text-[11px] border border-line bg-surface px-2.5 py-1.5 rounded-md tap-44">
-                  ⇋ 反転
-                </button>
-              )}
-              <button type="button" onClick={deleteSelected}
-                className="text-[11px] text-clay border border-clay-soft bg-clay-soft px-2.5 py-1.5 rounded-md font-bold tap-44">
-                🗑 削除
-              </button>
-            </span>
-          </div>
-
-          {selected.type === "room" && (
-            <SelectedRoomPanel
-              room={data.rooms.find((r) => r.id === selected.id)!}
-              onChange={(p) => updateRoom(selected.id, p)}
-            />
-          )}
-          {selected.type === "window" && (
-            <SelectedWindowPanel
-              win={data.windows.find((w) => w.id === selected.id)!}
-              onChange={(p) => updateWindow(selected.id, p)}
-            />
-          )}
+          <SelectedRoomPanel
+            room={data.rooms.find((r) => r.id === selected.id)!}
+            onChange={(p) => updateRoom(selected.id, p)}
+          />
         </div>
-      ) : (
+      )}
+      {selected?.type === "window" && (
+        <div className="px-4 py-3 border-t border-line bg-surface-2/60">
+          <SelectedWindowPanel
+            win={data.windows.find((w) => w.id === selected.id)!}
+            onChange={(p) => updateWindow(selected.id, p)}
+          />
+        </div>
+      )}
+      {!selected && (
         <div className="px-4 py-2 text-center text-[10px] text-ink-faint border-t border-line">
           右の ▼ で項目展開 → タップで配置／既存をタップで選択
         </div>
@@ -458,6 +464,115 @@ export function FloorplanEditor({
         </div>
       </Modal>
     </div>
+  );
+}
+
+function SidebarTop({
+  zoom,
+  onZoomIn,
+  onZoomOut,
+  onReset,
+  onFit,
+  selected,
+  selectionLabel,
+  canRotate,
+  canFlip,
+  onRotate,
+  onFlip,
+  onDelete,
+}: {
+  zoom: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onReset: () => void;
+  onFit: () => void;
+  selected: Selection;
+  selectionLabel: string | null;
+  canRotate: boolean;
+  canFlip: boolean;
+  onRotate: () => void;
+  onFlip: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <>
+      {/* ズーム */}
+      <div className="border-b border-line bg-paper/60 px-1 py-2">
+        <div className="text-[8.5px] font-bold tracking-wider text-center text-ink-faint mb-1">
+          ZOOM
+        </div>
+        <div className="flex justify-center gap-0.5">
+          <button
+            type="button"
+            onClick={onZoomOut}
+            aria-label="ズームアウト"
+            className="w-7 h-7 grid place-items-center rounded-md bg-surface border border-line text-ink-soft active:bg-surface-2 tap-44"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            onClick={onReset}
+            className="text-[10px] font-bold text-ink-soft px-1 grid place-items-center min-w-[28px] tap-44"
+            title="100%にリセット"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            type="button"
+            onClick={onZoomIn}
+            aria-label="ズームイン"
+            className="w-7 h-7 grid place-items-center rounded-md bg-surface border border-line text-ink-soft active:bg-surface-2 tap-44"
+          >
+            ＋
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={onFit}
+          className="w-full mt-1.5 text-[10px] font-bold text-clay border border-clay-soft bg-clay-soft/40 rounded-md py-1 tap-44"
+        >
+          ⛶ 全体
+        </button>
+      </div>
+
+      {/* 選択中アクション */}
+      {selected && (
+        <div className="border-b border-line bg-clay-soft/30 px-1 py-2">
+          <div className="text-[9px] font-bold text-clay text-center mb-1.5 truncate">
+            {selectionLabel}
+          </div>
+          {canRotate && (
+            <button
+              type="button"
+              onClick={onRotate}
+              className="w-full flex flex-col items-center py-1.5 text-[9.5px] font-bold text-ink-soft active:bg-surface-2 rounded tap-44"
+            >
+              <span className="text-base leading-none">↻</span>
+              90°回転
+            </button>
+          )}
+          {canFlip && (
+            <button
+              type="button"
+              onClick={onFlip}
+              className="w-full flex flex-col items-center py-1.5 text-[9.5px] font-bold text-ink-soft active:bg-surface-2 rounded tap-44"
+            >
+              <span className="text-base leading-none">⇋</span>
+              左右反転
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onDelete}
+            className="w-full flex flex-col items-center py-1.5 text-[9.5px] font-bold text-clay active:bg-clay/10 rounded tap-44"
+          >
+            <span className="text-base leading-none">🗑</span>
+            削除
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 

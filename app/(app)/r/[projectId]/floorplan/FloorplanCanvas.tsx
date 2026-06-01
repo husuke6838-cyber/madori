@@ -42,6 +42,7 @@ export type Selection =
 
 export type CanvasHandle = {
   toDataURL: () => string | null;
+  getViewportWidth: () => number;
 };
 
 const FloorplanCanvas = forwardRef<
@@ -49,6 +50,7 @@ const FloorplanCanvas = forwardRef<
   {
     data: FloorplanData;
     selected: Selection;
+    zoom: number;
     onSelect: (sel: Selection) => void;
     onRoomChange: (id: string, patch: Partial<RoomShape>) => void;
     onDoorChange: (id: string, patch: Partial<DoorShape>) => void;
@@ -59,6 +61,7 @@ const FloorplanCanvas = forwardRef<
   {
     data,
     selected,
+    zoom,
     onSelect,
     onRoomChange,
     onDoorChange,
@@ -68,21 +71,45 @@ const FloorplanCanvas = forwardRef<
   ref
 ) {
   const stageRef = useRef<Konva.Stage>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useImperativeHandle(ref, () => ({
     toDataURL: () => {
       const stage = stageRef.current;
       if (!stage) return null;
-      return stage.toDataURL({ pixelRatio: 2, mimeType: "image/png" });
+      // PNG 出力は等倍で。表示中のズームに左右されないよう一時的に scale=1 に戻す
+      const oldScale = stage.scaleX();
+      stage.scale({ x: 1, y: 1 });
+      stage.width(STAGE_W);
+      stage.height(STAGE_H);
+      const url = stage.toDataURL({
+        pixelRatio: 2,
+        mimeType: "image/png",
+        x: 0,
+        y: 0,
+        width: STAGE_W,
+        height: STAGE_H,
+      });
+      stage.scale({ x: oldScale, y: oldScale });
+      stage.width(STAGE_W * oldScale);
+      stage.height(STAGE_H * oldScale);
+      return url;
     },
+    getViewportWidth: () => containerRef.current?.clientWidth ?? 0,
   }));
 
   return (
-    <div className="overflow-auto bg-[#f8f3ec] border-y border-line">
+    <div
+      ref={containerRef}
+      className="overflow-auto bg-[#f8f3ec] border-y border-line touch-pan-x touch-pan-y"
+      style={{ maxHeight: "min(60vh, 560px)", minHeight: 320 }}
+    >
       <Stage
         ref={stageRef}
-        width={STAGE_W}
-        height={STAGE_H}
+        width={STAGE_W * zoom}
+        height={STAGE_H * zoom}
+        scaleX={zoom}
+        scaleY={zoom}
         onMouseDown={(e) => {
           if (e.target === e.target.getStage()) onSelect(null);
         }}

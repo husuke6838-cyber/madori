@@ -22,18 +22,22 @@ export type ToolSection = {
  * - 常時キャンバスの右に表示（下までスクロールしなくても要素追加できる）
  * - 単一展開アコーディオン：他のセクションを開くと前のセクションは閉じる
  * - 既定で先頭セクションが開く
+ * - topContent: ズーム／選択中アクションをサイドバー先頭に固定表示する
  */
 export function FloorplanToolSidebar({
   sections,
+  topContent,
 }: {
   sections: ToolSection[];
+  topContent?: React.ReactNode;
 }) {
   const [openId, setOpenId] = useState<string | null>(sections[0]?.id ?? null);
 
   return (
     <aside
-      className="w-[70px] flex-shrink-0 border-l border-line bg-surface-2/50 overflow-y-auto [scrollbar-width:none]"
+      className="w-[78px] flex-shrink-0 border-l border-line bg-surface-2/50 overflow-y-auto [scrollbar-width:none]"
     >
+      {topContent}
       {sections.map((section, idx) => {
         const open = openId === section.id;
         return (
