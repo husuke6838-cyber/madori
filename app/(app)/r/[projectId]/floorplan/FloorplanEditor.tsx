@@ -27,6 +27,7 @@ import {
   exportFloorplanPngAction,
 } from "./actions";
 import type { CanvasHandle, Selection } from "./FloorplanCanvas";
+import { FloorplanToolSidebar } from "./FloorplanToolSidebar";
 
 const FloorplanCanvas = dynamic(() => import("./FloorplanCanvas"), {
   ssr: false,
@@ -301,21 +302,71 @@ export function FloorplanEditor({
 
       <SummaryCard summary={summary} />
 
-      <div className="mt-3">
-        <FloorplanCanvas
-          ref={canvasRef}
-          data={data}
-          selected={selected}
-          onSelect={setSelected}
-          onRoomChange={updateRoom}
-          onDoorChange={updateDoor}
-          onWindowChange={updateWindow}
-          onFixtureChange={updateFixture}
+      <div className="mt-3 flex">
+        <div className="flex-1 min-w-0">
+          <FloorplanCanvas
+            ref={canvasRef}
+            data={data}
+            selected={selected}
+            onSelect={setSelected}
+            onRoomChange={updateRoom}
+            onDoorChange={updateDoor}
+            onWindowChange={updateWindow}
+            onFixtureChange={updateFixture}
+          />
+        </div>
+        <FloorplanToolSidebar
+          sections={[
+            {
+              id: "room",
+              title: "部屋",
+              icon: "▦",
+              tools: [
+                {
+                  icon: "＋",
+                  label: "部屋",
+                  onClick: () => setShowAddRoom(true),
+                },
+              ],
+            },
+            {
+              id: "door",
+              title: "建具",
+              icon: "🚪",
+              tools: [
+                { icon: "🚪", label: "開き戸", onClick: () => addDoor("hinged") },
+                { icon: "↔", label: "引き戸", onClick: () => addDoor("sliding") },
+                { icon: "⌐", label: "折れ戸", onClick: () => addDoor("folding") },
+              ],
+            },
+            {
+              id: "window",
+              title: "窓",
+              icon: "▭",
+              tools: [{ icon: "▭", label: "窓", onClick: addWindow }],
+            },
+            {
+              id: "fixture",
+              title: "設備",
+              icon: "🍳",
+              tools: [
+                { icon: "🍳", label: "I型", onClick: () => addFixture("kitchen-i") },
+                { icon: "🍳", label: "L型", onClick: () => addFixture("kitchen-l") },
+                { icon: "🍳", label: "島", onClick: () => addFixture("kitchen-island") },
+                { icon: "🛁", label: "浴槽", onClick: () => addFixture("bath") },
+                { icon: "🚰", label: "洗面", onClick: () => addFixture("washbasin") },
+                { icon: "🚽", label: "トイレ", onClick: () => addFixture("toilet") },
+                { icon: "🪜", label: "階段", onClick: () => addFixture("stairs") },
+                { icon: "🗄", label: "収納", onClick: () => addFixture("closet") },
+                { icon: "👞", label: "玄関", onClick: () => addFixture("entrance") },
+              ],
+            },
+          ]}
         />
       </div>
 
-      {/* 選択中要素のコントロール */}
-      {selected && (
+      {/* 選択中要素のコントロール（キャンバス下） */}
+      {selected ? (
         <div className="px-4 py-3 border-t border-line bg-surface-2/60">
           <div className="flex items-center gap-2 mb-2 text-[12px]">
             <span className="font-bold">選択中：{selectionLabel}</span>
@@ -323,13 +374,13 @@ export function FloorplanEditor({
               {selected.type !== "room" && (
                 <button type="button" onClick={rotateSelected}
                   className="text-[11px] border border-line bg-surface px-2.5 py-1.5 rounded-md tap-44">
-                  ↻ 90°回転
+                  ↻ 90°
                 </button>
               )}
               {selected.type === "door" && (
                 <button type="button" onClick={flipSelected}
                   className="text-[11px] border border-line bg-surface px-2.5 py-1.5 rounded-md tap-44">
-                  ⇋ 左右反転
+                  ⇋ 反転
                 </button>
               )}
               <button type="button" onClick={deleteSelected}
@@ -352,31 +403,9 @@ export function FloorplanEditor({
             />
           )}
         </div>
-      )}
-
-      {/* ツールバー（選択無いとき） */}
-      {!selected && (
-        <div className="px-4 py-3 border-t border-line bg-surface-2/60">
-          <p className="text-center text-[11px] text-ink-faint mb-2">
-            タップで要素を追加／既存をタップで選択
-          </p>
-          <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none]">
-            <ToolBtn icon="＋" label="部屋" onClick={() => setShowAddRoom(true)} />
-            <ToolBtn icon="🚪" label="開き戸" onClick={() => addDoor("hinged")} />
-            <ToolBtn icon="↔" label="引き戸" onClick={() => addDoor("sliding")} />
-            <ToolBtn icon="🚪⤓" label="折れ戸" onClick={() => addDoor("folding")} />
-            <ToolBtn icon="▭" label="窓" onClick={addWindow} />
-            <ToolBtn icon="🍳" label="キッチン" onClick={() => addFixture("kitchen-i")} />
-            <ToolBtn icon="🛁" label="浴槽" onClick={() => addFixture("bath")} />
-            <ToolBtn icon="🚰" label="洗面" onClick={() => addFixture("washbasin")} />
-            <ToolBtn icon="🚽" label="トイレ" onClick={() => addFixture("toilet")} />
-            <ToolBtn icon="🪜" label="階段" onClick={() => addFixture("stairs")} />
-            <ToolBtn icon="🗄" label="収納" onClick={() => addFixture("closet")} />
-            <ToolBtn icon="👞" label="玄関土間" onClick={() => addFixture("entrance")} />
-          </div>
-          <p className="text-[10px] text-ink-faint text-center mt-1">
-            設置した要素はドラッグで移動・タップで選択→回転／削除
-          </p>
+      ) : (
+        <div className="px-4 py-2 text-center text-[10px] text-ink-faint border-t border-line">
+          右の ▼ で項目展開 → タップで配置／既存をタップで選択
         </div>
       )}
 
@@ -429,16 +458,6 @@ export function FloorplanEditor({
         </div>
       </Modal>
     </div>
-  );
-}
-
-function ToolBtn({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick}
-      className="flex-shrink-0 flex flex-col items-center gap-1 border border-line bg-surface rounded-xl px-3 py-2.5 text-[11px] font-bold text-ink-soft min-w-[64px] tap-44 active:bg-surface-2">
-      <span className="text-lg">{icon}</span>
-      {label}
-    </button>
   );
 }
 
