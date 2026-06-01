@@ -5,6 +5,7 @@ export type PlanItem = {
   id: string;
   text: string;
   memo: string | null;
+  specModel: string | null;
   ratings: { member_id: string; stars: number }[];
   linkTitles: string[];
   imageUrls: string[];
@@ -111,6 +112,11 @@ export function PlanDocument({
                   {item.memo && (
                     <div className="text-[11px] text-ink-soft mt-1">
                       💭 {item.memo}
+                    </div>
+                  )}
+                  {item.specModel && (
+                    <div className="text-[11px] text-clay mt-1">
+                      🏷 {item.specModel}
                     </div>
                   )}
                   {item.linkTitles.length > 0 && (

@@ -6,9 +6,13 @@ import { signUpAction } from "./actions";
 export default async function SignUpPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : null;
+  const loginHref = safeNext
+    ? `/login?next=${encodeURIComponent(safeNext)}`
+    : "/login";
 
   return (
     <div className="bg-surface border border-line rounded-[var(--radius-card)] shadow-[0_5px_14px_rgba(60,45,30,0.05)] p-6">
@@ -20,7 +24,14 @@ export default async function SignUpPage({
         </p>
       )}
 
+      {safeNext?.startsWith("/join/") && (
+        <p className="mb-4 text-xs bg-clay-soft text-[#8a3d20] border border-[#ecc7b3] rounded-lg px-3 py-2.5 leading-relaxed">
+          ✉ 招待リンクで開きました。登録すると参加できます。
+        </p>
+      )}
+
       <form action={signUpAction} className="space-y-4">
+        {safeNext && <input type="hidden" name="next" value={safeNext} />}
         <div>
           <Label htmlFor="email">メールアドレス</Label>
           <Input
@@ -49,7 +60,7 @@ export default async function SignUpPage({
 
       <p className="mt-5 text-xs text-center text-ink-soft">
         既にアカウントをお持ちの方は{" "}
-        <Link href="/login" className="text-clay font-bold">
+        <Link href={loginHref} className="text-clay font-bold">
           ログイン
         </Link>
       </p>

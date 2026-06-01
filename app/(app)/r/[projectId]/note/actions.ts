@@ -118,6 +118,27 @@ export async function setRatingAction(formData: FormData) {
 }
 
 /**
+ * 要望の型番・仕様メモを更新（床材・壁紙などの確定情報、仕様§5.2）。
+ */
+export async function updateItemSpecAction(formData: FormData) {
+  const itemId = String(formData.get("itemId") ?? "");
+  const spec = String(formData.get("spec_model") ?? "").trim();
+  if (!itemId) return;
+
+  const { admin, roomId } = await requireUser_via_item(itemId);
+
+  await admin
+    .from("items")
+    .update({
+      spec_model: spec || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", itemId);
+
+  revalidatePathByRoom(roomId);
+}
+
+/**
  * 要望のメモを更新（履歴は残さない）。
  */
 export async function updateItemMemoAction(formData: FormData) {

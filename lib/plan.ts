@@ -33,7 +33,7 @@ export async function loadPlanData(projectId: string): Promise<{
       .select(
         `id, name, desired_jou, no_request, sort_order,
          items (
-           id, text, memo, sort_order,
+           id, text, memo, spec_model, sort_order,
            ratings ( member_id, stars ),
            item_images ( storage_path, sort_order ),
            item_links ( url, og_title, sort_order )
@@ -66,6 +66,7 @@ export async function loadPlanData(projectId: string): Promise<{
       id: string;
       text: string;
       memo: string | null;
+      spec_model: string | null;
       sort_order: number;
       ratings: { member_id: string; stars: number }[];
       item_images: { storage_path: string; sort_order: number }[];
@@ -115,6 +116,7 @@ export async function loadPlanData(projectId: string): Promise<{
         id: it.id,
         text: it.text,
         memo: it.memo,
+        specModel: it.spec_model,
         ratings: it.ratings ?? [],
         linkTitles: (it.item_links ?? [])
           .sort((a, b) => a.sort_order - b.sort_order)

@@ -8,6 +8,7 @@ import {
   setRatingAction,
   updateItemTextAction,
   updateItemMemoAction,
+  updateItemSpecAction,
 } from "./actions";
 import { ItemAttachments } from "./ItemAttachments";
 
@@ -18,6 +19,7 @@ export type ItemForCard = {
   id: string;
   text: string;
   memo: string | null;
+  specModel: string | null;
   ratings: Rating[];
   prevTexts: string[];
   images: { id: string; signedUrl: string | null }[];
@@ -40,6 +42,7 @@ export function ItemCard({
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(item.text);
   const [memo, setMemo] = useState(item.memo ?? "");
+  const [spec, setSpec] = useState(item.specModel ?? "");
   const [pending, startTransition] = useTransition();
 
   const total = item.ratings.reduce((s, r) => s + r.stars, 0);
@@ -78,9 +81,11 @@ export function ItemCard({
     fd.set("itemId", item.id);
     fd.set("text", trimmed);
     fd.set("memo", memo.trim());
+    fd.set("spec_model", spec.trim());
     startTransition(async () => {
       await updateItemTextAction(fd);
       await updateItemMemoAction(fd);
+      await updateItemSpecAction(fd);
       setEditing(false);
     });
   };
@@ -88,6 +93,7 @@ export function ItemCard({
   const handleCancel = () => {
     setText(item.text);
     setMemo(item.memo ?? "");
+    setSpec(item.specModel ?? "");
     setEditing(false);
   };
 
@@ -126,6 +132,13 @@ export function ItemCard({
             rows={2}
             placeholder="メモ（任意）：補足や検討中のことなど"
             className="w-full px-3 py-2 text-[13px] text-ink-soft bg-surface-2 rounded-[var(--radius-btn)] border border-line resize-none focus:outline-none focus:border-clay focus:ring-1 focus:ring-clay-soft"
+          />
+          <input
+            value={spec}
+            onChange={(e) => setSpec(e.target.value)}
+            placeholder="型番・仕様（例: LIXIL リシェルSI / 床材 オーク無垢）"
+            maxLength={200}
+            className="w-full px-3 py-2 text-[12.5px] text-ink-soft bg-surface-2 rounded-[var(--radius-btn)] border border-line focus:outline-none focus:border-clay focus:ring-1 focus:ring-clay-soft"
           />
           <div className="flex gap-2 justify-end">
             <button
@@ -221,6 +234,14 @@ export function ItemCard({
             メモ
           </span>
           {item.memo}
+        </div>
+      )}
+      {!editing && item.specModel && (
+        <div className="text-[12px] text-ink-soft mt-1.5 bg-surface-2 border border-line rounded-md px-2.5 py-1.5">
+          <span className="text-[10px] font-bold tracking-wider text-clay mr-1">
+            型番・仕様
+          </span>
+          {item.specModel}
         </div>
       )}
     </div>

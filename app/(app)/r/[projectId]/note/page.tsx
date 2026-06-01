@@ -14,6 +14,7 @@ type ItemRow = {
   id: string;
   text: string;
   memo: string | null;
+  spec_model: string | null;
   sort_order: number;
   ratings: { member_id: string; stars: number }[];
   item_revisions: { prev_text: string; changed_at: string }[];
@@ -84,7 +85,7 @@ export default async function NoteTab({
   const { data: items } = await admin
     .from("items")
     .select(
-      `id, text, memo, sort_order,
+      `id, text, memo, spec_model, sort_order,
        ratings ( member_id, stars ),
        item_revisions ( prev_text, changed_at ),
        item_images ( id, storage_path, sort_order ),
@@ -113,6 +114,7 @@ export default async function NoteTab({
     id: it.id,
     text: it.text,
     memo: it.memo,
+    specModel: it.spec_model,
     ratings: it.ratings ?? [],
     prevTexts: (it.item_revisions ?? [])
       .sort(
@@ -151,7 +153,7 @@ export default async function NoteTab({
 
   return (
     <>
-      <FamilyChips members={members} />
+      <FamilyChips projectId={projectId} members={members} />
       <RoomTabs
         rooms={rooms}
         currentRoomId={currentRoom.id}
