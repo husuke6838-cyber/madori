@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { THEMES, type ThemeId } from "@/lib/theme";
 import { setThemeAction } from "@/app/actions/theme";
 
@@ -18,7 +19,20 @@ export function ThemePicker({
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<ThemeId>(currentTheme);
+  const [mounted, setMounted] = useState(false);
   const [, startTransition] = useTransition();
+
+  useEffect(() => setMounted(true), []);
+
+  // ボトムシート開いてる間はスクロールロック
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
   const pick = (id: ThemeId) => {
     if (id === active) return;
@@ -43,17 +57,21 @@ export function ThemePicker({
         ⚙
       </button>
 
-      {open && (
+      {open && mounted && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40"
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-ink/40"
           onClick={() => setOpen(false)}
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
           <div
-            className="w-full max-w-md bg-surf rounded-t-3xl px-5 pt-5 pb-7 shadow-2xl"
+            className="w-full max-w-md bg-surf rounded-t-3xl px-5 pt-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label="テーマカラー選択"
+            style={{
+              paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)",
+            }}
           >
             <h3 className="text-base font-extrabold text-ink mb-1">
               テーマカラー
@@ -96,7 +114,8 @@ export function ThemePicker({
               完了
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
