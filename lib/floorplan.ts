@@ -132,27 +132,206 @@ export function summarizeFloorplan(rooms: RoomShape[]) {
 }
 
 /**
- * 部屋追加時の既定サイズ（セル）。
- * 仕様§7.2 のサジェスト目安を 910mm グリッドに当てはめたもの。
+ * 部屋追加時のプリセット寸法（仕様§7.2 / §4）。
+ *
+ * 設計方針:
+ * - 主要な部屋タイプには複数のサイズオプションを用意（広々／標準／コンパクト）
+ * - ユーザーは「何帖が必要か」ではなく「どの広さ感か」で選べる
+ * - 各サイズは 910mm グリッド単位なので、実寸 (Xm × Ym) を補助表示する
+ * - 浴室は UB 規格を反映（1坪 = 1616 / 1.25坪 = 1620 を近似）
  */
-export const ROOM_TYPE_PRESETS: Record<
-  string,
-  { label: string; w: number; h: number }
-> = {
-  LDK: { label: "LDK", w: 5, h: 6 }, // ≒ 17帖
-  主寝室: { label: "主寝室", w: 3, h: 4 }, // ≒ 6.7帖
-  子供部屋: { label: "子供部屋", w: 3, h: 3 }, // ≒ 5帖
-  和室: { label: "和室", w: 3, h: 3 },
-  WIC: { label: "WIC", w: 2, h: 2 },
-  浴室: { label: "浴室", w: 2, h: 2 }, // 1坪サイズ
-  洗面所: { label: "洗面所", w: 2, h: 2 },
-  トイレ: { label: "トイレ", w: 1, h: 2 },
-  玄関: { label: "玄関", w: 2, h: 2 },
-  ホール: { label: "ホール", w: 2, h: 3 },
-  廊下: { label: "廊下", w: 1, h: 3 },
-  納戸: { label: "納戸", w: 2, h: 2 },
-  書斎: { label: "書斎", w: 2, h: 2 },
-  部屋: { label: "部屋", w: 3, h: 3 },
+export type RoomSize = {
+  /** ラベル: "10帖" や "1坪" や "標準" など */
+  name: string;
+  w: number;
+  h: number;
+  /** 補足説明（任意） */
+  note?: string;
 };
+
+export type RoomPreset = {
+  /** 内部キー（type に保存） */
+  key: string;
+  label: string;
+  emoji: string;
+  /** モーダルの並びカテゴリ */
+  category: "living" | "sleeping" | "water" | "entry" | "other";
+  sizes: RoomSize[];
+};
+
+export const ROOM_PRESETS: RoomPreset[] = [
+  {
+    key: "LDK",
+    label: "LDK",
+    emoji: "🛋",
+    category: "living",
+    sizes: [
+      { name: "コンパクト", w: 3, h: 6, note: "夫婦向け" },
+      { name: "標準", w: 4, h: 6 },
+      { name: "ゆったり", w: 5, h: 6 },
+      { name: "広々", w: 6, h: 6, note: "4人家族＋" },
+    ],
+  },
+  {
+    key: "主寝室",
+    label: "主寝室",
+    emoji: "🛏",
+    category: "sleeping",
+    sizes: [
+      { name: "6帖", w: 3, h: 3 },
+      { name: "8帖", w: 3, h: 4, note: "標準" },
+      { name: "10帖", w: 4, h: 4, note: "WIC付に最適" },
+    ],
+  },
+  {
+    key: "子供部屋",
+    label: "子供部屋",
+    emoji: "🧸",
+    category: "sleeping",
+    sizes: [
+      { name: "4.5帖", w: 3, h: 2, note: "小学生まで" },
+      { name: "6帖", w: 3, h: 3, note: "標準" },
+      { name: "8帖", w: 3, h: 4 },
+    ],
+  },
+  {
+    key: "和室",
+    label: "和室",
+    emoji: "🟫",
+    category: "sleeping",
+    sizes: [
+      { name: "4.5帖", w: 3, h: 2 },
+      { name: "6帖", w: 3, h: 3, note: "標準" },
+      { name: "8帖", w: 3, h: 4 },
+    ],
+  },
+  {
+    key: "書斎",
+    label: "書斎",
+    emoji: "📚",
+    category: "other",
+    sizes: [
+      { name: "2帖", w: 2, h: 2, note: "PC机1つ" },
+      { name: "4帖", w: 2, h: 3 },
+    ],
+  },
+  {
+    key: "WIC",
+    label: "WIC",
+    emoji: "👕",
+    category: "sleeping",
+    sizes: [
+      { name: "2帖", w: 2, h: 2, note: "夫婦" },
+      { name: "3帖", w: 2, h: 3 },
+      { name: "4帖", w: 2, h: 4 },
+    ],
+  },
+  {
+    key: "浴室",
+    label: "浴室",
+    emoji: "🛁",
+    category: "water",
+    sizes: [
+      { name: "0.75坪 (1216)", w: 2, h: 2, note: "コンパクト" },
+      { name: "1坪 (1616)", w: 2, h: 2, note: "標準UB" },
+      { name: "1.25坪 (1620)", w: 2, h: 3, note: "広々" },
+    ],
+  },
+  {
+    key: "洗面所",
+    label: "洗面所",
+    emoji: "🚿",
+    category: "water",
+    sizes: [
+      { name: "1坪", w: 2, h: 2, note: "標準" },
+      { name: "1.5坪", w: 2, h: 3, note: "脱衣広め" },
+    ],
+  },
+  {
+    key: "トイレ",
+    label: "トイレ",
+    emoji: "🚽",
+    category: "water",
+    sizes: [
+      { name: "0.5坪", w: 1, h: 2, note: "標準" },
+      { name: "0.75坪", w: 2, h: 2, note: "手洗い別" },
+    ],
+  },
+  {
+    key: "玄関",
+    label: "玄関",
+    emoji: "🚪",
+    category: "entry",
+    sizes: [
+      { name: "1坪", w: 2, h: 2, note: "標準" },
+      { name: "1.5坪", w: 2, h: 3, note: "シューズクローク併設" },
+      { name: "2坪", w: 2, h: 4, note: "土間広め" },
+    ],
+  },
+  {
+    key: "ホール",
+    label: "ホール",
+    emoji: "↗",
+    category: "entry",
+    sizes: [
+      { name: "1.5坪", w: 2, h: 3 },
+      { name: "2坪", w: 2, h: 4 },
+    ],
+  },
+  {
+    key: "廊下",
+    label: "廊下",
+    emoji: "▭",
+    category: "entry",
+    sizes: [
+      { name: "1間", w: 1, h: 2 },
+      { name: "1.5間", w: 1, h: 3 },
+      { name: "2間", w: 1, h: 4 },
+    ],
+  },
+  {
+    key: "納戸",
+    label: "納戸",
+    emoji: "📦",
+    category: "other",
+    sizes: [
+      { name: "1坪", w: 2, h: 2 },
+      { name: "1.5坪", w: 2, h: 3 },
+      { name: "2坪", w: 2, h: 4 },
+    ],
+  },
+  {
+    key: "部屋",
+    label: "その他の部屋",
+    emoji: "▦",
+    category: "other",
+    sizes: [
+      { name: "4.5帖", w: 3, h: 2 },
+      { name: "6帖", w: 3, h: 3 },
+      { name: "8帖", w: 3, h: 4 },
+    ],
+  },
+];
+
+export const ROOM_CATEGORY_LABEL: Record<RoomPreset["category"], string> = {
+  living: "リビング・くつろぎ",
+  sleeping: "寝室・個室・収納",
+  water: "水まわり",
+  entry: "玄関・通路",
+  other: "その他",
+};
+
+/** key で検索（既存データに `type` で入っているキーから引く） */
+export function findRoomPreset(key: string | undefined): RoomPreset | undefined {
+  if (!key) return undefined;
+  return ROOM_PRESETS.find((p) => p.key === key);
+}
+
+/** w×h のセル寸 → 実寸表記（メートル） */
+export function cellsToMeters(w: number, h: number, gridMm = DEFAULT_GRID_MM) {
+  const mw = ((w * gridMm) / 1000).toFixed(2).replace(/\.?0+$/, "");
+  const mh = ((h * gridMm) / 1000).toFixed(2).replace(/\.?0+$/, "");
+  return `${mw}m × ${mh}m`;
+}
 
 export const FLOORPLAN_MAX = 5;

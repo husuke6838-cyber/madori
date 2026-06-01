@@ -6,15 +6,20 @@ import Link from "next/link";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
+import { cn } from "@/lib/ui";
 import {
   cellsToJou,
+  cellsToMeters,
   summarizeFloorplan,
   type FloorplanData,
   type RoomShape,
   type DoorShape,
   type WindowShape,
   type FixtureShape,
-  ROOM_TYPE_PRESETS,
+  type RoomPreset,
+  type RoomSize,
+  ROOM_PRESETS,
+  ROOM_CATEGORY_LABEL,
   FLOORPLAN_MAX,
 } from "@/lib/floorplan";
 import { DISCLAIMER_COST } from "@/lib/constants";
@@ -97,11 +102,16 @@ export function FloorplanEditor({
   const summary = useMemo(() => summarizeFloorplan(data.rooms), [data.rooms]);
 
   // 部屋
-  const addRoom = (typeKey: string) => {
-    const preset = ROOM_TYPE_PRESETS[typeKey];
+  const addRoom = (preset: RoomPreset, size: RoomSize) => {
     const id = crypto.randomUUID();
     const newRoom: RoomShape = {
-      id, x: 2, y: 2, w: preset.w, h: preset.h, label: preset.label, type: typeKey,
+      id,
+      x: 2,
+      y: 2,
+      w: size.w,
+      h: size.h,
+      label: preset.label,
+      type: preset.key,
     };
     updateData((d) => ({ ...d, rooms: [...d.rooms, newRoom] }));
     setSelected({ type: "room", id });
@@ -430,22 +440,15 @@ export function FloorplanEditor({
         </button>
       </div>
 
-      {/* 部屋追加モーダル */}
-      <Modal open={showAddRoom} onClose={() => setShowAddRoom(false)} title="どんな部屋を追加しますか？">
-        <div className="grid grid-cols-3 gap-2">
-          {Object.keys(ROOM_TYPE_PRESETS).map((key) => {
-            const p = ROOM_TYPE_PRESETS[key];
-            return (
-              <button key={key} type="button" onClick={() => addRoom(key)}
-                className="border border-line bg-surface rounded-xl px-2 py-3 text-center tap-44 active:bg-surface-2">
-                <div className="text-[14px] font-bold">{p.label}</div>
-                <div className="text-[10px] text-ink-faint mt-0.5">{p.w}×{p.h} ({cellsToJou(p.w, p.h)}帖)</div>
-              </button>
-            );
-          })}
-        </div>
+      {/* 部屋追加モーダル：カテゴリ別 + サイズプリセット */}
+      <Modal
+        open={showAddRoom}
+        onClose={() => setShowAddRoom(false)}
+        title="部屋とサイズを選ぶ"
+      >
+        <RoomPicker onPick={addRoom} />
         <p className="text-[11px] text-ink-faint mt-3 leading-relaxed">
-          ※ 配置後にサイズ・名前は自由に変更できます
+          ※ 配置後にサイズ・名前は自由に変更できます。サイズは目安です。
         </p>
       </Modal>
 
@@ -699,6 +702,105 @@ function ArchitecturalHints({
       <p className="text-[10px] text-ink-faint mt-2">
         ※ 法適合判定は有資格者・自治体に最終確認してください
       </p>
+    </div>
+  );
+}
+
+/**
+ * 部屋タイプ＋サイズの2段ピッカー。
+ * - 上段：タイプ（カテゴリ別グルーピング）
+ * - タイプを選ぶと、その下にサイズ候補が展開
+ * - サイズタップで即追加
+ */
+function RoomPicker({
+  onPick,
+}: {
+  onPick: (preset: RoomPreset, size: RoomSize) => void;
+}) {
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const selected = selectedKey
+    ? ROOM_PRESETS.find((p) => p.key === selectedKey)
+    : null;
+
+  // カテゴリごとにグループ化
+  const categories: RoomPreset["category"][] = [
+    "living",
+    "sleeping",
+    "water",
+    "entry",
+    "other",
+  ];
+
+  return (
+    <div>
+      {categories.map((cat) => {
+        const presets = ROOM_PRESETS.filter((p) => p.category === cat);
+        if (presets.length === 0) return null;
+        return (
+          <div key={cat} className="mb-3 last:mb-0">
+            <div className="text-[10px] font-bold tracking-wider text-ink-faint mb-1.5 px-0.5">
+              {ROOM_CATEGORY_LABEL[cat]}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {presets.map((p) => {
+                const on = p.key === selectedKey;
+                return (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() =>
+                      setSelectedKey(p.key === selectedKey ? null : p.key)
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-1.5 text-[12.5px] font-bold px-3 py-2 rounded-full border tap-44 transition-colors",
+                      on
+                        ? "bg-accent text-white border-accent shadow-[0_3px_8px_rgba(0,0,0,0.12)]"
+                        : "bg-surf text-ink border-line"
+                    )}
+                  >
+                    <span className="text-[14px] leading-none">{p.emoji}</span>
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* 選択タイプのサイズ候補 */}
+      {selected && (
+        <div className="mt-4 border-t border-line pt-3">
+          <div className="text-[11px] text-ink-soft mb-2">
+            <b className="text-ink">{selected.label}</b> のサイズを選んでね
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {selected.sizes.map((s) => (
+              <button
+                key={`${s.name}-${s.w}x${s.h}`}
+                type="button"
+                onClick={() => onPick(selected, s)}
+                className="text-left border border-line bg-surf rounded-xl px-3 py-2.5 tap-44 active:bg-accent-soft active:border-accent"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[13.5px] font-bold text-ink">
+                    {s.name}
+                  </span>
+                  <span className="text-[10.5px] font-bold text-accent">
+                    {cellsToJou(s.w, s.h)}帖
+                  </span>
+                </div>
+                <div className="text-[10.5px] text-ink-faint mt-0.5">
+                  {cellsToMeters(s.w, s.h)}
+                </div>
+                {s.note && (
+                  <div className="text-[10px] text-ink-soft mt-1">{s.note}</div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
