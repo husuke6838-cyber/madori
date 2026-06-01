@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -67,8 +67,24 @@ export function FloorplanEditor({
   const [saveState, setSaveState] = useState<"saved" | "saving" | "dirty">("saved");
   const [exporting, setExporting] = useState(false);
   const [zoom, setZoom] = useState(0.6);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [, startTransition] = useTransition();
   const canvasRef = useRef<CanvasHandle>(null);
+
+  // サイドバー開閉は localStorage に記憶（部屋追加など作業を区切らないため）
+  useEffect(() => {
+    const v = localStorage.getItem("fp_sidebar_open");
+    if (v === "0") setSidebarOpen(false);
+  }, []);
+  const toggleSidebar = () => {
+    setSidebarOpen((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem("fp_sidebar_open", next ? "1" : "0");
+      } catch {}
+      return next;
+    });
+  };
 
   const clampZoom = (z: number) => Math.max(0.3, Math.min(2, Math.round(z * 100) / 100));
   const fitToScreen = () => {
@@ -336,6 +352,8 @@ export function FloorplanEditor({
           />
         </div>
         <FloorplanToolSidebar
+          open={sidebarOpen}
+          onToggle={toggleSidebar}
           topContent={
             <SidebarTop
               onFit={fitToScreen}
