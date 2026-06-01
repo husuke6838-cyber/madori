@@ -1,13 +1,51 @@
-export default function FloorplanTab() {
+import { requireUser } from "@/lib/auth";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import type { FloorplanData } from "@/lib/floorplan";
+import { EMPTY_FLOORPLAN } from "@/lib/floorplan";
+import { FloorplanEditor } from "./FloorplanEditor";
+import { FloorplanEmptyState } from "./FloorplanEmptyState";
+
+export default async function FloorplanTab({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ projectId: string }>;
+  searchParams: Promise<{ fp?: string; error?: string }>;
+}) {
+  const { projectId } = await params;
+  const { fp, error } = await searchParams;
+  await requireUser();
+
+  const admin = createSupabaseAdminClient();
+
+  const { data: floorplans } = await admin
+    .from("floorplans")
+    .select("id, name, grid_unit_mm, data, sort_order, updated_at")
+    .eq("project_id", projectId)
+    .order("sort_order");
+
+  const list = floorplans ?? [];
+
+  if (list.length === 0) {
+    return <FloorplanEmptyState projectId={projectId} error={error} />;
+  }
+
+  const current = list.find((f) => f.id === fp) ?? list[0];
+
   return (
-    <main className="px-5 py-5">
-      <div className="font-mincho text-2xl mb-1">間取り</div>
-      <p className="text-xs text-ink-soft mb-6">
-        マス目に部屋を置いて、理想の間取りを2Dで描く
-      </p>
-      <div className="text-center text-xs text-ink-faint border border-dashed border-line bg-surface-2 rounded-[var(--radius-card)] px-5 py-8">
-        Phase 2 で実装（react-konva）
-      </div>
-    </main>
+    <FloorplanEditor
+      projectId={projectId}
+      floorplans={list.map((f) => ({
+        id: f.id,
+        name: f.name,
+      }))}
+      current={{
+        id: current.id,
+        name: current.name,
+        gridUnitMm: current.grid_unit_mm,
+        data: ((current.data as FloorplanData) ?? null) || EMPTY_FLOORPLAN,
+      }}
+      error={error}
+    />
   );
 }
