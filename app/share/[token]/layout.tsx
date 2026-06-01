@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LogoLockup } from "@/components/Logo";
 
 /**
  * 共有ビュー用のレイアウト。
@@ -11,19 +12,14 @@ export default function ShareLayout({
 }) {
   return (
     <>
-      <header className="sticky top-0 z-30 bg-paper/90 backdrop-blur border-b border-line print:hidden">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-clay text-white grid place-items-center text-sm font-bold shadow">
-              家
-            </span>
-            <span className="font-mincho font-bold text-base">
-              いえづくりノート
-            </span>
+      <header className="sticky top-0 z-30 bg-surf border-b border-line print:hidden">
+        <div className="max-w-2xl mx-auto px-4 py-2.5 flex items-center gap-2">
+          <Link href="/" className="flex items-center">
+            <LogoLockup size="sm" />
           </Link>
           <Link
             href="/signup"
-            className="ml-auto text-xs text-clay font-bold px-2 py-1.5 tap-44"
+            className="ml-auto text-xs text-accent font-bold px-2 py-1.5 tap-44"
           >
             自分も使ってみる
           </Link>

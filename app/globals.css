@@ -1,81 +1,133 @@
 @import "tailwindcss";
 
 /* =========================================================
-   いえづくりノート デザイントークン
-   仕様§3に準拠。色は CSS 変数で持ち、Tailwind v4 の @theme
-   経由で `bg-paper` / `text-clay` のように使える。
+   私のおうちカルテ — テーマトークン
+   - 8 トークン: bg / surf / ink / soft / faint / line / accent / accent-soft
+   - <html data-theme="..."> で切替可能（10 テーマ）
+   - 既定は blue
+   - 家族色（wife/hub）と sage（成功色）は固定値で別軸として保持
    ========================================================= */
 
-:root {
-  --paper: #f4efe7;
-  --surface: #fffdf9;
-  --surface-2: #faf6ee;
-
-  --ink: #2c2722;
-  --ink-soft: #6b635a;
-  --ink-faint: #a39a8d;
-  --line: #e6ddcf;
-
-  --clay: #bd5d3a;
-  --clay-soft: #f3e2d9;
-  --sage: #6f7d5c;
-  --sage-soft: #e8ecdf;
-
-  /* 家族カラー（既定2色。追加メンバーはパレット内から自動割当） */
-  --wife: #c6587f;
-  --wife-soft: #f6e3ea;
-  --hub: #4f7a99;
-  --hub-soft: #e0ebf1;
-
-  /* 間取り */
-  --wall: #9c907c;
+:root,
+[data-theme="blue"] {
+  --bg:#eef2fa; --surf:#ffffff;
+  --ink:#1e2a44; --soft:#6173a0; --faint:#9aa6c4; --line:#dde4f1;
+  --accent:#2f5fb0; --accent-soft:#e3ebf8;
+}
+[data-theme="natural"] {
+  --bg:#f4efe7; --surf:#fffdf9;
+  --ink:#2c2722; --soft:#6b635a; --faint:#a39a8d; --line:#e6ddcf;
+  --accent:#bd5d3a; --accent-soft:#f3e2d9;
+}
+[data-theme="green"] {
+  --bg:#f1f7f2; --surf:#ffffff;
+  --ink:#1d2b22; --soft:#5e7a68; --faint:#9bb4a4; --line:#dceae0;
+  --accent:#1f9d57; --accent-soft:#dcf2e5;
+}
+[data-theme="coral"] {
+  --bg:#fdf3f1; --surf:#ffffff;
+  --ink:#3a2420; --soft:#9a6b62; --faint:#c8a39b; --line:#f3ddd7;
+  --accent:#e8654e; --accent-soft:#fbe2db;
+}
+[data-theme="purple"] {
+  --bg:#f5f2fb; --surf:#ffffff;
+  --ink:#2a2340; --soft:#6f6593; --faint:#a99fc4; --line:#e6dff2;
+  --accent:#7c5cc4; --accent-soft:#ece4f8;
+}
+[data-theme="teal"] {
+  --bg:#eef7f7; --surf:#ffffff;
+  --ink:#173535; --soft:#557978; --faint:#93b3b2; --line:#d6eae9;
+  --accent:#11998e; --accent-soft:#d7f0ed;
+}
+[data-theme="mustard"] {
+  --bg:#f8f5ec; --surf:#ffffff;
+  --ink:#322c1a; --soft:#7c715a; --faint:#b3a98c; --line:#e9e1cc;
+  --accent:#c79a2e; --accent-soft:#f3e9cf;
+}
+[data-theme="navy"] {
+  --bg:#eef0f5; --surf:#ffffff;
+  --ink:#16203a; --soft:#566181; --faint:#94a0bc; --line:#dadfe9;
+  --accent:#1f3a6b; --accent-soft:#e0e5f0;
+}
+[data-theme="mono"] {
+  --bg:#f5f5f4; --surf:#ffffff;
+  --ink:#1f1f1f; --soft:#6e6e6c; --faint:#a8a8a4; --line:#e6e6e3;
+  --accent:#3a3a38; --accent-soft:#eaeae7;
+}
+[data-theme="dark"] {
+  --bg:#1b1f29; --surf:#252b38;
+  --ink:#eef1f7; --soft:#9aa6bf; --faint:#67718a; --line:#333b4c;
+  --accent:#ffae57; --accent-soft:#3a3320;
 }
 
+/* 共通の固定トークン */
+:root {
+  /* 家族カラー（メンバー追加時の既定パレット） */
+  --wife:#c6587f; --wife-soft:#f6e3ea;
+  --hub:#4f7a99;  --hub-soft:#e0ebf1;
+
+  /* 成功・補助色（変更しない） */
+  --sage:#6f7d5c; --sage-soft:#e8ecdf;
+
+  /* 間取り壁色 */
+  --wall:#9c907c;
+}
+
+/* =========================================================
+   Tailwind v4 @theme — ユーティリティクラスを公開
+   bg-bg / bg-surf / text-ink / text-soft / text-faint / border-line
+   bg-accent / text-accent / bg-accent-soft などを使えるようにする
+   ========================================================= */
 @theme inline {
-  --color-paper: var(--paper);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-
+  --color-bg: var(--bg);
+  --color-surf: var(--surf);
   --color-ink: var(--ink);
-  --color-ink-soft: var(--ink-soft);
-  --color-ink-faint: var(--ink-faint);
+  --color-soft: var(--soft);
+  --color-faint: var(--faint);
   --color-line: var(--line);
-
-  --color-clay: var(--clay);
-  --color-clay-soft: var(--clay-soft);
-  --color-sage: var(--sage);
-  --color-sage-soft: var(--sage-soft);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
 
   --color-wife: var(--wife);
   --color-wife-soft: var(--wife-soft);
   --color-hub: var(--hub);
   --color-hub-soft: var(--hub-soft);
-
+  --color-sage: var(--sage);
+  --color-sage-soft: var(--sage-soft);
   --color-wall: var(--wall);
+
+  /* 後方互換 alias（旧コードのリネーム前まで動かす） */
+  --color-paper: var(--bg);
+  --color-surface: var(--surf);
+  --color-surface-2: var(--bg);
+  --color-ink-soft: var(--soft);
+  --color-ink-faint: var(--faint);
+  --color-clay: var(--accent);
+  --color-clay-soft: var(--accent-soft);
 
   --font-sans: var(--font-zen), "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
   --font-mincho: var(--font-mincho), "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-display: "Outfit", var(--font-zen), sans-serif;
 
-  /* 角丸 */
-  --radius-card: 15px;
+  --radius-card: 13px;
   --radius-chip: 18px;
   --radius-btn: 11px;
 }
 
 html, body { height: 100%; }
 body {
-  background: var(--paper);
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
+  transition: background-color .25s, color .25s;
 }
 
-/* タッチ操作優先：最低タップ領域 44px を担保するユーティリティ */
+/* タッチ操作優先：最低タップ領域 44px */
 .tap-44 { min-height: 44px; min-width: 44px; }
 
-/* 印刷用（計画書タブの A4 印刷） */
 @media print {
   body { background: #fff; color: #000; }
-  .no-print { display: none !important; }
+  .no-print, [data-theme="dark"] { display: none !important; }
   @page { size: A4; margin: 14mm; }
 }

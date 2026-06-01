@@ -19,7 +19,7 @@ export default function NotFound() {
           href="/"
           className="inline-block text-clay font-bold text-sm tap-44 px-4 py-3"
         >
-          いえづくりノート トップへ →
+          おうちカルテ トップへ →
         </Link>
       </div>
     </main>

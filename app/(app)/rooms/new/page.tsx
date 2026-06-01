@@ -23,7 +23,7 @@ export default async function NewProjectPage({
 
       <h2 className="text-2xl font-bold mb-2">新しいルームを作る</h2>
       <p className="text-xs text-ink-soft mb-6 leading-relaxed">
-        ルーム＝1件の家づくり。家族と共有して使う「家づくりノート」です。
+        ルーム＝1件の家づくり。家族と共有して使う「おうちカルテ」です。
         <br />
         作成後、家族メンバーの追加や部屋カテゴリの編集ができます。
       </p>

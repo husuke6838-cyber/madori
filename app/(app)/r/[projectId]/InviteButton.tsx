@@ -94,9 +94,9 @@ export function InviteButton({ projectId }: { projectId: string }) {
               </Button>
               <a
                 href={`mailto:?subject=${encodeURIComponent(
-                  "家づくりノートへの招待"
+                  "おうちカルテへの招待"
                 )}&body=${encodeURIComponent(
-                  `家づくりノートに参加してください。\n下のリンクから自分のアカウントで参加できます。\n\n${url}`
+                  `おうちカルテに参加してください。\n下のリンクから自分のアカウントで参加できます。\n\n${url}`
                 )}`}
               >
                 <Button type="button" size="md" className="w-full">
